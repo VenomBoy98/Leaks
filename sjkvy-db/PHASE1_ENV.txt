@@ -1,0 +1,9 @@
+PostgreSQL binary: ABSENT (which psql/postgres/initdb/pg_ctl → none)
+On-disk server/client: NONE (find / → no postgres, pg_ctl, initdb, psql)
+apt fetch: BLOCKED — archive.ubuntu.com returns 403 Forbidden (egress proxy deny)
+pip index: BLOCKED — "No matching distribution" (PyPI unreachable)
+conda/mamba/micromamba: ABSENT
+Network: disabled (bash_tool egress Enabled:false; proxy denies package hosts)
+Supabase: no staging project/credentials provided; must not use production
+Available: python3 3.12.3, sqlite 3.45.1
+Conclusion: PostgreSQL 15+ CANNOT run in this environment. Phases 2–7 = BLOCKED BY ENVIRONMENT.

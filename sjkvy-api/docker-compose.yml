@@ -1,0 +1,94 @@
+# SJKVY backend — production-style stack: PostgreSQL (with the frozen migrations applied
+# on first init), the API, and an nginx reverse proxy terminating client traffic.
+#
+# Secrets come from a .env file (see deploy/.env.compose.example) — never commit real
+# values. The database is the business layer; the API is the thin orchestration tier.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: sjkvy
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?set API_DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Frozen migrations (read-only) + adapter, consumed by the init script.
+      - ../sjkvy-db:/sjkvy-db:ro
+      - ./sql:/sjkvy-api-sql:ro
+      - ./deploy/db-init.sh:/docker-entrypoint-initdb.d/00-init.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d sjkvy']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Not published to the host in production; only the API reaches it on the internal net.
+    expose:
+      - '5432'
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '8080'
+      DATABASE_URL: postgres://sjkvy_api_login:${API_DB_PASSWORD}@db:5432/sjkvy
+      PG_POOL_MAX: '20'
+      # Auth: HS256 secret OR a JWKS endpoint for a real provider.
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_JWKS_URI: ${JWT_JWKS_URI:-}
+      JWT_ISSUER: ${JWT_ISSUER:-}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?set SERVICE_TOKEN}
+      STORAGE_URL_SIGNING_SECRET: ${STORAGE_URL_SIGNING_SECRET:?set STORAGE_URL_SIGNING_SECRET}
+      STORAGE_PUBLIC_BASE_URL: ${STORAGE_PUBLIC_BASE_URL:-http://localhost/storage}
+      STORAGE_DIR: /data/storage
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      TRUST_PROXY: 'true'
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # Local object store for the skeleton driver; swap for S3/Supabase in production.
+      - storage-data:/data/storage
+    expose:
+      - '8080'
+
+  # Notification worker sidecar: same image, different entrypoint. Drives the outbox +
+  # delivery catalogue functions as service_role. Scale to 1 (SKIP LOCKED makes >1 safe).
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ['node', 'dist/worker/index.js']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://sjkvy_api_login:${API_DB_PASSWORD}@db:5432/sjkvy
+      SERVICE_TOKEN: ${SERVICE_TOKEN}
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_JWKS_URI: ${JWT_JWKS_URI:-}
+      STORAGE_URL_SIGNING_SECRET: ${STORAGE_URL_SIGNING_SECRET}
+      WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-5000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${PROXY_HTTP_PORT:-80}:80'
+      # - '443:443'   # enable with TLS certs mounted (see deploy/nginx.conf)
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # - ./deploy/certs:/etc/nginx/certs:ro
+
+volumes:
+  db-data:
+  storage-data:

@@ -1,3 +1,31 @@
+# --- SJKVY platform ---
+# Dependencies & build output
+node_modules/
+.next/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# Local runtime state / uploaded document storage (never commit)
+.storage/
+*.log
+
+# Environment files with secrets — commit only *.env.example templates
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.compose.example
+
+# Editor / OS
+.idea/
+.DS_Store
+
+# Large deliverable snapshots (redundant with source; regenerate on demand)
+*.zip
+
 ### AL ###
 #Template for AL projects for Dynamics 365 Business Central
 #launch.json folder

@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Shared static utilities lifted verbatim from the handoff prototype <style> blocks.
+   Per-screen animation CSS is injected scoped by <HandoffScreen>. */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-family: 'Material Symbols Outlined';
+}
+.museum-shadow { box-shadow: 0 4px 20px rgba(26, 28, 30, 0.04); }
+.silk-border { border: 1px solid rgba(119, 90, 25, 0.2); }
+.glass-nav { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+/* forced-colors / color-scheme fix shipped in every handoff screen */
+:root { forced-color-adjust: none; -webkit-forced-color-adjust: none; }
+html, body { forced-color-adjust: none; color-scheme: light; }
+body { background-color: #fcf9f8; color: #1b1c1b; }

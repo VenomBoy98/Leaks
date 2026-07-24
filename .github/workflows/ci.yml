@@ -1,0 +1,69 @@
+name: CI
+
+# Backend CI for the SJKVY monorepo (sjkvy-db + sjkvy-api).
+# Gates: typecheck, build, security checks, the full DATABASE suite (migrations +
+# level-1 + level-2 concurrency on real PostgreSQL), and the full API suite
+# (JWT/RLS/storage/idempotency over HTTP). Nothing is mocked.
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL 16
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-client-16
+          sudo pg_ctlcluster 16 main start
+          # Superuser for CI + a password for the admin test pool.
+          sudo -u postgres psql -c "ALTER ROLE postgres WITH PASSWORD 'postgres';"
+          sudo -u postgres psql -c "CREATE ROLE runner LOGIN SUPERUSER PASSWORD 'runner';" || true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: sjkvy-api/package-lock.json
+
+      # --- static gates -----------------------------------------------------------
+      - name: DB static + semantic checks
+        working-directory: sjkvy-db
+        run: |
+          python3 ci/static_checks.py
+          python3 ci/semantic_check.py
+          python3 verify_manifest.py
+
+      - name: API install + typecheck + build
+        working-directory: sjkvy-api
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+          npm run openapi        # OpenAPI must generate cleanly
+
+      - name: API dependency audit (high+)
+        working-directory: sjkvy-api
+        run: npm audit --audit-level=high || true   # report; do not hard-fail the build
+
+      # --- DATABASE suite: migrations + level-1 + level-2 races -------------------
+      - name: Database suite (run_all.sh)
+        working-directory: sjkvy-db
+        env:
+          PATH: /usr/lib/postgresql/16/bin:/usr/bin:/bin
+        run: sudo -u postgres env "PATH=$PATH" bash tests/run_all.sh sjkvy_ci
+
+      # --- API suite: JWT / RLS / storage / idempotency / concurrency over HTTP ---
+      - name: API integration suites
+        working-directory: sjkvy-api
+        env:
+          PATH: /usr/lib/postgresql/16/bin:/usr/bin:/bin
+          STORAGE_DIR: /tmp/sjkvy-storage-ci
+        run: bash scripts/run-tests.sh sjkvy_api
