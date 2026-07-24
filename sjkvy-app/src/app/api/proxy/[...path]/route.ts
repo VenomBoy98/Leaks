@@ -40,6 +40,9 @@ const ALLOW: Array<[string, RegExp]> = [
   ["POST", new RegExp(`^verification\\/cases\\/${U}\\/corrections$`)],
   ["POST", new RegExp(`^verification\\/cases\\/${U}\\/fail$`)],
   ["POST", new RegExp(`^applications\\/${U}\\/admission$`)],
+  // ----- admin: admissions + waitlist -----
+  ["GET", new RegExp(`^batches\\/${U}\\/waitlist$`)],
+  ["POST", new RegExp(`^batches\\/${U}\\/waitlist\\/promote$`)],
   // ----- staff: attendance -----
   ["GET", /^batches$/],
   ["GET", new RegExp(`^batches\\/${U}\\/sessions$`)],

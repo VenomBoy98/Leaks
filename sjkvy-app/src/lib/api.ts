@@ -60,6 +60,8 @@ export interface PlacementReferral {
 }
 export interface StaffMember { profile_id: string; centre_id: string; role_code: string; is_active: boolean }
 export interface StatusCount { status: string; n: number }
+export interface AdmissionDecisionRow { id: string; application_id: string; decision: string; batch_id?: string | null; reason?: string | null; created_at?: string }
+export interface WaitlistEntry { id: string; application_id: string; batch_id: string; status: string; rank?: number | null; created_at?: string }
 
 const listOf = <T>(p: string, opts?: RequestOpts) => http.get<{ items: T[] }>(p, opts).then((d) => d.items ?? []);
 
@@ -180,6 +182,10 @@ export const api = {
   ) => http.post<{ decision: string; offer_id?: string | null; rank?: number | null }>(
     `applications/${applicationId}/admission`, body, { idempotencyKey: newIdempotencyKey(), ...opts },
   ),
+  listDecisions: (applicationId: string, opts?: RequestOpts) => listOf<AdmissionDecisionRow>(`applications/${applicationId}/decisions`, opts),
+  listWaitlist: (batchId: string, opts?: RequestOpts) => listOf<WaitlistEntry>(`batches/${batchId}/waitlist`, opts),
+  promoteWaitlist: (batchId: string, opts?: RequestOpts) =>
+    http.post<{ promoted?: string | null }>(`batches/${batchId}/waitlist/promote`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
 
   // ----- student / staff -----
   listEnrolments: (opts?: RequestOpts) => listOf<Enrolment>("enrolments", opts),

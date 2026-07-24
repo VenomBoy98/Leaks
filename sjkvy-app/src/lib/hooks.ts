@@ -76,6 +76,12 @@ export function useOpportunities() {
 export function useReferrals() {
   return useSWR<PlacementReferral[]>("placement/referrals", () => api.listReferrals());
 }
+export function useDecisions(applicationId: string | undefined) {
+  return useSWR(applicationId ? ["decisions", applicationId] : null, () => (applicationId ? api.listDecisions(applicationId) : Promise.resolve([])));
+}
+export function useWaitlist(batchId: string | undefined) {
+  return useSWR(batchId ? ["waitlist", batchId] : null, () => (batchId ? api.listWaitlist(batchId) : Promise.resolve([])));
+}
 export function useReports() {
   return useSWR("reports/all", async () => {
     const [verification, counselling, hostel, certificates, placement] = await Promise.all([
@@ -96,6 +102,8 @@ export const refresh = {
   attendance: (sessionId: string) => globalMutate(["attendance", sessionId]),
   attendanceSummary: (batchId: string) => globalMutate(["att-summary", batchId]),
   counselling: () => globalMutate("counselling/appointments"),
+  decisions: (id: string) => globalMutate(["decisions", id]),
+  waitlist: (batchId: string) => globalMutate(["waitlist", batchId]),
   hostelRequests: () => globalMutate("hostel/requests"),
   hostelBeds: () => globalMutate("hostel/beds"),
   certificates: () => globalMutate("certificates"),
