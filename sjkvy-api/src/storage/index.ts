@@ -44,8 +44,33 @@ function req(name: string): string {
   return v;
 }
 
+// Assemble just the storage-relevant config from the environment. Used by the standalone
+// scanner worker, which must build a driver WITHOUT triggering the API's JWT validation.
+function storageConfigFromEnv(): StorageConfig {
+  const numEnv = (name: string, fb: number): number => {
+    const v = process.env[name];
+    return v === undefined ? fb : Number(v);
+  };
+  const mime = (process.env.STORAGE_ALLOWED_MIME ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  return {
+    urlSigningSecret: process.env.STORAGE_URL_SIGNING_SECRET,
+    uploadTtlSec: numEnv('STORAGE_UPLOAD_TTL_SEC', 300),
+    downloadTtlSec: numEnv('STORAGE_DOWNLOAD_TTL_SEC', 300),
+    maxUploadBytes: numEnv('STORAGE_MAX_UPLOAD_BYTES', 10 * 1024 * 1024),
+    allowedMime: mime.length ? mime : ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+    publicBaseUrl: process.env.STORAGE_PUBLIC_BASE_URL ?? 'http://localhost:8080/storage',
+  };
+}
+
+export function buildStorageFromEnv(): StorageService {
+  return buildStorageFor(storageConfigFromEnv());
+}
+
 export function buildStorage(cfg: Config): StorageService {
-  const s = cfg.storage;
+  return buildStorageFor(cfg.storage);
+}
+
+function buildStorageFor(s: StorageConfig): StorageService {
   const driver = (process.env.STORAGE_DRIVER ?? 'local').toLowerCase();
   switch (driver) {
     case 's3':

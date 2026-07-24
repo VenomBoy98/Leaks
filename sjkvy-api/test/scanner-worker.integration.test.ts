@@ -46,7 +46,7 @@ afterAll(async () => { if (up) { await pg.query('DELETE FROM app.profiles WHERE 
 
 describe('scanner worker (fake adapter)', () => {
   it('is DEGRADED with no adapter configured (files stay pending)', async () => {
-    const { ScannerWorker } = await import('../src/worker/scanner-worker.ts');
+    const { ScannerWorker } = await import('../src/worker/scanner-worker.js');
     const health = await new ScannerWorker(null).readiness();
     expect(health.degraded).toBe(true);
     expect(health.ready).toBe(false);
@@ -54,9 +54,9 @@ describe('scanner worker (fake adapter)', () => {
 
   it('marks a clean file CLEAN and an EICAR file FLAGGED (quarantined)', async () => {
     if (!up) return expect(true).toBe(true);
-    const { initDb, closeDb } = await import('../src/db.ts');
-    const { ScannerWorker } = await import('../src/worker/scanner-worker.ts');
-    const { FakeScanAdapter } = await import('../src/worker/scanner-adapter.ts');
+    const { initDb, closeDb } = await import('../src/db.js');
+    const { ScannerWorker } = await import('../src/worker/scanner-worker.js');
+    const { FakeScanAdapter } = await import('../src/worker/scanner-adapter.js');
     initDb(process.env.DATABASE_URL!);
     const r = await new ScannerWorker(new FakeScanAdapter()).tick(50);
     expect(r.degraded).toBe(false);

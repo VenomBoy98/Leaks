@@ -1,11 +1,12 @@
 // storage/local.ts — local filesystem driver + HMAC-signed gateway URLs. Default for
 // dev/self-host. Production selects S3 or Supabase (bytes go straight to the provider).
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, writeFile, readFile, stat } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, stat, rename } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { StorageConfig } from '../config.js';
-import type { SignedUrl, StorageDriver } from './driver.js';
+import type { ObjectReadLimits, SignedUrl, StorageDriver } from './driver.js';
 import { assertKey } from './driver.js';
+import { ObjectTooLargeError } from './bounded.js';
 
 interface TokenPayload {
   op: 'up' | 'dn';
@@ -19,7 +20,9 @@ export class LocalDriver implements StorageDriver {
   readonly kind = 'local' as const;
   constructor(
     private cfg: StorageConfig,
-    private root = resolve(process.env.STORAGE_DIR ?? '/tmp/sjkvy-storage'),
+    // In local dev the Next BFF upload route writes bytes under SJKVY_DOC_STORAGE; honour it
+    // so the API gateway and the scanner worker read from the same root without extra config.
+    private root = resolve(process.env.STORAGE_DIR ?? process.env.SJKVY_DOC_STORAGE ?? '/tmp/sjkvy-storage'),
   ) {}
 
   private secret(): string {
@@ -100,5 +103,27 @@ export class LocalDriver implements StorageDriver {
     } catch {
       return false;
     }
+  }
+
+  // Bounded read for the scanner: stat first and refuse anything over the cap before loading a
+  // single byte; a timeout races both filesystem calls. Path traversal is blocked by pathFor.
+  async readObject(key: string, { maxBytes, timeoutMs }: ObjectReadLimits): Promise<Buffer> {
+    const p = this.pathFor(key);
+    const withTimeout = <T>(work: Promise<T>): Promise<T> =>
+      Promise.race([
+        work,
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`object read timed out after ${timeoutMs}ms`)), timeoutMs)),
+      ]);
+    const st = await withTimeout(stat(p));
+    if (st.size > maxBytes) throw new ObjectTooLargeError(maxBytes);
+    return withTimeout(readFile(p));
+  }
+
+  // Move a flagged object under a .quarantine prefix so it is no longer at its servable key.
+  async quarantine(key: string): Promise<void> {
+    const from = this.pathFor(key);
+    const to = this.pathFor(join('.quarantine', key));
+    await mkdir(dirname(to), { recursive: true });
+    await rename(from, to);
   }
 }

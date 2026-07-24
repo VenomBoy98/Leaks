@@ -1,8 +1,9 @@
 // storage/supabase.ts — Supabase Storage driver via the REST API (service-role key,
 // server-side only). Uses native signed upload/download URLs, so the browser talks
 // straight to Supabase Storage and bytes never transit the API. No SDK dependency.
-import type { SignedUrl, StorageDriver } from './driver.js';
+import type { ObjectReadLimits, SignedUrl, StorageDriver } from './driver.js';
 import { assertKey } from './driver.js';
+import { boundedFetch } from './bounded.js';
 
 export interface SupabaseStorageConfig {
   url: string; // https://<ref>.supabase.co
@@ -75,5 +76,13 @@ export class SupabaseStorageDriver implements StorageDriver {
     } catch {
       return false;
     }
+  }
+
+  // Trusted server-side read for the scanner: mint a signed download URL and stream it under a
+  // hard size cap + timeout. Bytes flow Supabase -> worker, never through a client.
+  async readObject(key: string, limits: ObjectReadLimits): Promise<Buffer> {
+    assertKey(key);
+    const { url } = await this.presignDownload(key);
+    return boundedFetch(url, limits);
   }
 }

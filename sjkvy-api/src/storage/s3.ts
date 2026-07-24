@@ -3,8 +3,9 @@
 // downloads straight to S3 and bytes never transit the API. Correctness is pinned by a
 // unit test against AWS's published presigned-URL example vector (see test/s3-sigv4.test.ts).
 import { createHash, createHmac } from 'node:crypto';
-import type { SignedUrl, StorageDriver } from './driver.js';
+import type { ObjectReadLimits, SignedUrl, StorageDriver } from './driver.js';
 import { assertKey } from './driver.js';
+import { boundedFetch } from './bounded.js';
 
 export interface S3Config {
   bucket: string;
@@ -129,5 +130,13 @@ export class S3Driver implements StorageDriver {
     } catch {
       return false;
     }
+  }
+
+  // Trusted server-side read for the scanner: presign a short-lived GET and stream it under a
+  // hard size cap + timeout. Bytes go straight from S3 to the worker, never through a client.
+  async readObject(key: string, limits: ObjectReadLimits): Promise<Buffer> {
+    assertKey(key);
+    const url = presignS3(this.cfg, 'GET', key, Math.max(30, Math.ceil(limits.timeoutMs / 1000)));
+    return boundedFetch(url, limits);
   }
 }

@@ -9,6 +9,13 @@ export interface SignedUrl {
   required_headers?: Record<string, string>;
 }
 
+// Bounds for a trusted server-side read (e.g. the virus scanner). The driver MUST refuse
+// objects larger than maxBytes WITHOUT buffering them whole, and abort after timeoutMs.
+export interface ObjectReadLimits {
+  maxBytes: number;
+  timeoutMs: number;
+}
+
 export interface StorageDriver {
   readonly kind: 'local' | 's3' | 'supabase';
   // Presign a client-side upload of `key` with the given content type.
@@ -22,6 +29,14 @@ export interface StorageDriver {
   verifyToken?(token: string): { op: 'up' | 'dn'; key: string; ct?: string; max?: number } | null;
   put?(key: string, data: Buffer): Promise<void>;
   get?(key: string): Promise<Buffer>;
+  // Trusted, bounded server-side read for out-of-band processing (scanning). Enforces a hard
+  // size cap and timeout so a hostile or corrupt object cannot exhaust the worker. Never
+  // exposed to any client. Absent only on drivers that cannot serve bytes to the backend.
+  readObject?(key: string, limits: ObjectReadLimits): Promise<Buffer>;
+  // Best-effort move of a flagged object out of servable space (defence in depth — the DB
+  // already marks FLAGGED versions non-servable via fn_authorize_doc_view). May be a no-op
+  // where the provider blocks serving by other means.
+  quarantine?(key: string): Promise<void>;
 }
 
 const KEY_RE = /^[A-Za-z0-9][A-Za-z0-9/_-]{0,200}$/;
