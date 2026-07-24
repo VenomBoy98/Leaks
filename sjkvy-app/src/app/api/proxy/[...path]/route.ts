@@ -31,11 +31,54 @@ const ALLOW: Array<[string, RegExp]> = [
   ["GET", /^notifications$/],
   ["POST", new RegExp(`^notifications\\/${U}\\/read$`)],
   ["GET", /^enrolments$/],
+  ["GET", /^admin\/staff$/],
+  // ----- staff: verification -----
   ["GET", /^verification\/cases$/],
   ["POST", new RegExp(`^verification\\/cases\\/${U}\\/assign$`)],
+  ["POST", new RegExp(`^verification\\/cases\\/${U}\\/reassign$`)],
   ["POST", new RegExp(`^verification\\/cases\\/${U}\\/decisions$`)],
   ["POST", new RegExp(`^verification\\/cases\\/${U}\\/corrections$`)],
+  ["POST", new RegExp(`^verification\\/cases\\/${U}\\/fail$`)],
   ["POST", new RegExp(`^applications\\/${U}\\/admission$`)],
+  // ----- staff: attendance -----
+  ["GET", /^batches$/],
+  ["GET", new RegExp(`^batches\\/${U}\\/sessions$`)],
+  ["GET", new RegExp(`^batches\\/${U}\\/enrolments$`)],
+  ["GET", new RegExp(`^batches\\/${U}\\/attendance-summary$`)],
+  ["POST", /^sessions$/],
+  ["GET", new RegExp(`^sessions\\/${U}\\/attendance$`)],
+  ["POST", new RegExp(`^sessions\\/${U}\\/attendance$`)],
+  ["POST", new RegExp(`^sessions\\/${U}\\/lock$`)],
+  // ----- staff: counselling -----
+  ["GET", /^counselling\/appointments$/],
+  ["GET", new RegExp(`^applications\\/${U}\\/counselling$`)],
+  ["POST", new RegExp(`^applications\\/${U}\\/counselling$`)],
+  ["POST", new RegExp(`^counselling\\/${U}\\/reschedule$`)],
+  ["POST", new RegExp(`^counselling\\/${U}\\/no-show$`)],
+  ["POST", new RegExp(`^counselling\\/${U}\\/outcome$`)],
+  // ----- staff: hostel -----
+  ["GET", /^hostel\/requests$/],
+  ["GET", /^hostel\/beds$/],
+  ["POST", new RegExp(`^hostel\\/requests\\/${U}\\/approve$`)],
+  ["POST", new RegExp(`^hostel\\/requests\\/${U}\\/allocate$`)],
+  ["POST", new RegExp(`^hostel\\/beds\\/${U}\\/status$`)],
+  // ----- staff: certificates -----
+  ["GET", /^certificates$/],
+  ["POST", new RegExp(`^enrolments\\/${U}\\/certificate$`)],
+  ["POST", new RegExp(`^certificates\\/${U}\\/reissue$`)],
+  ["POST", new RegExp(`^certificates\\/${U}\\/revoke$`)],
+  // ----- staff: placement -----
+  ["GET", /^placement\/opportunities$/],
+  ["GET", /^placement\/referrals$/],
+  ["POST", new RegExp(`^placement\\/opportunities\\/${U}\\/referrals$`)],
+  ["PATCH", new RegExp(`^placement\\/referrals\\/${U}$`)],
+  ["POST", new RegExp(`^placement\\/referrals\\/${U}\\/outcome$`)],
+  // ----- staff: reports (scoped aggregates) -----
+  ["GET", /^reports\/verification$/],
+  ["GET", /^reports\/counselling$/],
+  ["GET", /^reports\/hostel-occupancy$/],
+  ["GET", /^reports\/certificates$/],
+  ["GET", /^reports\/placement$/],
 ];
 
 function isAllowed(method: string, path: string): boolean {

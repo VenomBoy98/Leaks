@@ -123,4 +123,58 @@ export const attendanceOps: Operation[] = [
     paramsSchema: obj({ sessionId: uuid }, ['sessionId']),
     notes: 'Scoped by policy p_att_sel.',
   },
+  {
+    domain: 'attendance',
+    opId: 'sessions.list',
+    method: 'GET',
+    path: '/batches/:batchId/sessions',
+    auth: 'user',
+    summary: 'List class sessions for a batch (trainer / centre admin / student in batch).',
+    read: (ctx) => ({
+      text: `SELECT id, batch_id, session_date, kind, slot, topic, trainer_profile_id, locked_at, created_at
+             FROM app.class_sessions WHERE batch_id = $1 ORDER BY session_date DESC, slot`,
+      values: [reqStr(ctx.params.batchId, 'batchId')],
+    }),
+    paramsSchema: obj({ batchId: uuid }, ['batchId']),
+    notes: 'Scoped by policy p_sessions_sel (trainer / centre_admin / student in batch).',
+  },
+  {
+    domain: 'attendance',
+    opId: 'batch.enrolments.list',
+    method: 'GET',
+    path: '/batches/:batchId/enrolments',
+    auth: 'user',
+    summary: 'List a batch roster (enrolments) for attendance marking.',
+    read: (ctx) => ({
+      text: `SELECT id, student_id, batch_id, application_id, status, joined_at, left_at, created_at
+             FROM app.enrolments WHERE batch_id = $1 ORDER BY created_at`,
+      values: [reqStr(ctx.params.batchId, 'batchId')],
+    }),
+    paramsSchema: obj({ batchId: uuid }, ['batchId']),
+    notes: 'Scoped by policy p_enrol_sel (centre_admin / counsellor / hostel_manager / trainer).',
+  },
+  {
+    domain: 'attendance',
+    opId: 'attendance.summary',
+    method: 'GET',
+    path: '/batches/:batchId/attendance-summary',
+    auth: 'user',
+    summary: 'Per-session present/absent counts for a batch (attendance report).',
+    read: (ctx) => ({
+      // RLS on class_sessions + attendance scopes both to the caller's centre/batch; the
+      // aggregate reflects only rows the caller may see.
+      text: `SELECT s.id AS session_id, s.session_date, s.topic, s.locked_at,
+                    count(a.*) FILTER (WHERE a.present)       AS present,
+                    count(a.*) FILTER (WHERE NOT a.present)   AS absent,
+                    count(a.*)                                AS total
+             FROM app.class_sessions s
+             LEFT JOIN app.attendance a ON a.session_id = s.id
+             WHERE s.batch_id = $1
+             GROUP BY s.id, s.session_date, s.topic, s.locked_at
+             ORDER BY s.session_date DESC`,
+      values: [reqStr(ctx.params.batchId, 'batchId')],
+    }),
+    paramsSchema: obj({ batchId: uuid }, ['batchId']),
+    notes: 'Scoped by p_sessions_sel + p_att_sel.',
+  },
 ];

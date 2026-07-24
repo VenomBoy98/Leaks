@@ -188,6 +188,23 @@ export const centreAdminOps: Operation[] = [
   },
   {
     domain: 'centre-administration',
+    opId: 'staff.list',
+    method: 'GET',
+    path: '/admin/staff',
+    auth: 'user',
+    summary: 'List staff memberships at the caller’s centre(s) (centre admin) for assignment pickers.',
+    read: () => ({
+      // p_memb_sel scopes to the caller's own membership OR centres where they are
+      // centre_admin/super_admin. profiles RLS is own-only, so no name is exposed here —
+      // callers select by role_code + profile_id. Never trusts a browser-supplied centre.
+      text: `SELECT profile_id, centre_id, role_code, is_active
+             FROM app.staff_memberships WHERE is_active ORDER BY role_code, profile_id`,
+      values: [],
+    }),
+    notes: 'Scoped by policy p_memb_sel.',
+  },
+  {
+    domain: 'centre-administration',
     opId: 'batches.list',
     method: 'GET',
     path: '/batches',

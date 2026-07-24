@@ -96,7 +96,7 @@ export const documentsOps: Operation[] = [
     summary: 'List document metadata for an application (path-less view, RLS-scoped).',
     read: (ctx) => ({
       text: `SELECT id, application_id, document_type_code, status, version_no,
-                    scan_status, uploaded_at
+                    scan_status, uploaded_at, version_id
              FROM app.v_my_documents WHERE application_id = $1
              ORDER BY document_type_code`,
       values: [reqStr(ctx.params.id, 'id')],

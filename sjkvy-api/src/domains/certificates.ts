@@ -80,4 +80,18 @@ export const certificatesOps: Operation[] = [
       'anon EXECUTE. Unknown code → uniform {valid:false}; no PII beyond holder name + ' +
       'course/batch. Rate limiting is an API-tier concern (see notes).',
   },
+  {
+    domain: 'certificates',
+    opId: 'certificates.list',
+    method: 'GET',
+    path: '/certificates',
+    auth: 'user',
+    summary: 'List certificates for the caller’s centre (centre admin) or own (holder).',
+    read: () => ({
+      text: `SELECT id, enrolment_id, certificate_no, verify_code, status, supersedes_id, created_at
+             FROM app.certificates ORDER BY created_at DESC LIMIT 200`,
+      values: [],
+    }),
+    notes: 'Scoped by policy p_cert_sel (owner or centre_admin at the enrolment’s centre).',
+  },
 ];

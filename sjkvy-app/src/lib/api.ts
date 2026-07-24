@@ -26,9 +26,40 @@ export interface CertVerifyResult {
   course_code?: string | null; batch_code?: string | null; issued_on?: string | null; superseded?: boolean | null;
 }
 export interface VerificationCase {
-  id: string; application_id: string; status: string; assigned_to?: string | null; centre_id?: string; created_at?: string;
+  id: string; application_id: string; status: string; assigned_to?: string | null; centre_id?: string; created_at?: string; updated_at?: string;
 }
 export interface NotificationItem { id: string; template_key?: string; status?: string; created_at?: string; payload?: unknown }
+
+// ----- staff domain types (mirror sjkvy-api read projections) -----
+export interface Enrolment {
+  id: string; student_id: string; batch_id: string; application_id: string;
+  status: string; joined_at?: string | null; left_at?: string | null; created_at?: string;
+}
+export interface Batch { id: string; code?: string; centre_id?: string; course_id?: string; status?: string; capacity?: number | null; name?: string }
+export interface ClassSession {
+  id: string; batch_id: string; session_date: string; kind: string; slot?: number | null; topic?: string | null; trainer_profile_id?: string; locked_at?: string | null;
+}
+export interface AttendanceRow { id: string; session_id: string; enrolment_id: string; present: boolean; created_at?: string; updated_at?: string }
+export interface CounsellingAppointment {
+  id: string; application_id: string; status: string; scheduled_at?: string | null; attempt_no?: number; created_at?: string;
+}
+export interface HostelRequest {
+  id: string; enrolment_id: string; status: string; created_at?: string; updated_at?: string;
+}
+export interface HostelBed {
+  id: string; room_id: string; bed_no: string; status: string; room_no?: string | null; block_name?: string | null;
+}
+export interface Certificate {
+  id: string; enrolment_id: string; certificate_no?: string | null; verify_code?: string | null; status: string; created_at?: string; supersedes_id?: string | null;
+}
+export interface PlacementOpportunity {
+  id: string; employer_id: string; centre_id: string; course_id?: string | null; title: string; openings?: number | null; closes_on?: string | null; created_at?: string;
+}
+export interface PlacementReferral {
+  id: string; opportunity_id: string; placement_profile_id: string; status: string; created_at?: string; updated_at?: string;
+}
+export interface StaffMember { profile_id: string; centre_id: string; role_code: string; is_active: boolean }
+export interface StatusCount { status: string; n: number }
 
 const listOf = <T>(p: string, opts?: RequestOpts) => http.get<{ items: T[] }>(p, opts).then((d) => d.items ?? []);
 
@@ -62,14 +93,86 @@ export const api = {
   withdrawApplication: (id: string, reason: string, opts?: RequestOpts) =>
     http.post<{ status: ApplicationStatus }>(`applications/${id}/withdraw`, { reason }, { idempotencyKey: newIdempotencyKey(), ...opts }),
 
+  // ----- staff: roster (for assignment pickers) -----
+  listStaff: (opts?: RequestOpts) => listOf<StaffMember>("admin/staff", opts),
+
   // ----- staff: verification -----
   listVerificationCases: (opts?: RequestOpts) => listOf<VerificationCase>("verification/cases", opts),
+  assignChecker: (caseId: string, checker: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`verification/cases/${caseId}/assign`, { checker }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  reassignChecker: (caseId: string, checker: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`verification/cases/${caseId}/reassign`, { checker }, { idempotencyKey: newIdempotencyKey(), ...opts }),
   decideDocument: (
     caseId: string, body: { document_version_id: string; decision: DocDecision; reason?: string }, opts?: RequestOpts,
   ) => http.post<{ decision: string; case_verified: boolean }>(`verification/cases/${caseId}/decisions`, body, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  requestCorrection: (caseId: string, body: { document_version_id: string; reason: string }, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`verification/cases/${caseId}/corrections`, body, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  failVerification: (caseId: string, reason: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`verification/cases/${caseId}/fail`, { reason }, { idempotencyKey: newIdempotencyKey(), ...opts }),
   // backend contract: view-url is POST (mints a short-lived authorized URL)
   documentViewUrl: (versionId: string, opts?: RequestOpts) =>
     http.post<{ url: string; expires_at?: string }>(`documents/${versionId}/view-url`, undefined, opts),
+
+  // ----- staff: attendance -----
+  listBatches: (opts?: RequestOpts) => listOf<Batch>("batches", opts),
+  listSessions: (batchId: string, opts?: RequestOpts) => listOf<ClassSession>(`batches/${batchId}/sessions`, opts),
+  createSession: (body: { batch_id: string; session_date: string; kind: "THEORY" | "PRACTICAL"; slot?: number; topic?: string }, opts?: RequestOpts) =>
+    http.post<ClassSession>("sessions", body, opts),
+  listSessionAttendance: (sessionId: string, opts?: RequestOpts) => listOf<AttendanceRow>(`sessions/${sessionId}/attendance`, opts),
+  markAttendance: (sessionId: string, body: { enrolment_id: string; present: boolean }, opts?: RequestOpts) =>
+    http.post<{ id: string; present: boolean }>(`sessions/${sessionId}/attendance`, body, opts),
+  lockSession: (sessionId: string, opts?: RequestOpts) =>
+    http.post<{ ok: boolean }>(`sessions/${sessionId}/lock`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  listBatchEnrolments: (batchId: string, opts?: RequestOpts) => listOf<Enrolment>(`batches/${batchId}/enrolments`, opts),
+  attendanceSummary: (batchId: string, opts?: RequestOpts) =>
+    http.get<{ items: Array<{ session_id: string; session_date: string; topic: string | null; present: number; absent: number; total: number }> }>(`batches/${batchId}/attendance-summary`, opts).then((d) => d.items ?? []),
+
+  // ----- staff: counselling -----
+  listCounselling: (opts?: RequestOpts) => listOf<CounsellingAppointment>("counselling/appointments", opts),
+  scheduleCounselling: (applicationId: string, scheduledAt: string, opts?: RequestOpts) =>
+    http.post<{ appointment_id: string }>(`applications/${applicationId}/counselling`, { scheduled_at: scheduledAt }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  rescheduleCounselling: (appointmentId: string, scheduledAt: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`counselling/${appointmentId}/reschedule`, { scheduled_at: scheduledAt }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  counsellingNoShow: (appointmentId: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`counselling/${appointmentId}/no-show`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  counsellingOutcome: (appointmentId: string, body: { recommendation: "APPROVE" | "REJECT" | "WAITLIST"; notes?: string }, opts?: RequestOpts) =>
+    http.post<{ recommendation: string }>(`counselling/${appointmentId}/outcome`, body, { idempotencyKey: newIdempotencyKey(), ...opts }),
+
+  // ----- staff: hostel -----
+  listHostelRequests: (opts?: RequestOpts) => listOf<HostelRequest>("hostel/requests", opts),
+  listHostelBeds: (opts?: RequestOpts) => listOf<HostelBed>("hostel/beds", opts),
+  approveHostelRequest: (requestId: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`hostel/requests/${requestId}/approve`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  allocateHostelBed: (requestId: string, bedId: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`hostel/requests/${requestId}/allocate`, { bed_id: bedId }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  setBedStatus: (bedId: string, status: "AVAILABLE" | "MAINTENANCE", opts?: RequestOpts) =>
+    http.post<{ status: string }>(`hostel/beds/${bedId}/status`, { status }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+
+  // ----- staff: certificates -----
+  listCertificates: (opts?: RequestOpts) => listOf<Certificate>("certificates", opts),
+  issueCertificate: (enrolmentId: string, opts?: RequestOpts) =>
+    http.post<{ certificate_id: string; code?: string }>(`enrolments/${enrolmentId}/certificate`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  reissueCertificate: (certId: string, opts?: RequestOpts) =>
+    http.post<{ certificate_id: string }>(`certificates/${certId}/reissue`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  revokeCertificate: (certId: string, reason: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`certificates/${certId}/revoke`, { reason }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+
+  // ----- staff: placement -----
+  listOpportunities: (opts?: RequestOpts) => listOf<PlacementOpportunity>("placement/opportunities", opts),
+  listReferrals: (opts?: RequestOpts) => listOf<PlacementReferral>("placement/referrals", opts),
+  referStudent: (opportunityId: string, placementProfileId: string, opts?: RequestOpts) =>
+    http.post<{ referral_id: string }>(`placement/opportunities/${opportunityId}/referrals`, { placement_profile_id: placementProfileId }, { idempotencyKey: newIdempotencyKey(), ...opts }),
+  updateReferral: (referralId: string, status: string, opts?: RequestOpts) =>
+    http.patch<{ status: string }>(`placement/referrals/${referralId}`, { status }, opts),
+  referralOutcome: (referralId: string, body: { outcome: string; notes?: string }, opts?: RequestOpts) =>
+    http.post<{ outcome: string }>(`placement/referrals/${referralId}/outcome`, body, { idempotencyKey: newIdempotencyKey(), ...opts }),
+
+  // ----- staff: reports (scoped aggregates) -----
+  reportVerification: (opts?: RequestOpts) => listOf<StatusCount>("reports/verification", opts),
+  reportCounselling: (opts?: RequestOpts) => listOf<StatusCount>("reports/counselling", opts),
+  reportHostelOccupancy: (opts?: RequestOpts) => listOf<StatusCount>("reports/hostel-occupancy", opts),
+  reportCertificates: (opts?: RequestOpts) => listOf<StatusCount>("reports/certificates", opts),
+  reportPlacement: (opts?: RequestOpts) => listOf<StatusCount>("reports/placement", opts),
 
   // ----- admin: admission decision (transactional + idempotent) -----
   finalizeAdmission: (
@@ -78,8 +181,8 @@ export const api = {
     `applications/${applicationId}/admission`, body, { idempotencyKey: newIdempotencyKey(), ...opts },
   ),
 
-  // ----- student -----
-  listEnrolments: (opts?: RequestOpts) => listOf<Record<string, unknown>>("enrolments", opts),
+  // ----- student / staff -----
+  listEnrolments: (opts?: RequestOpts) => listOf<Enrolment>("enrolments", opts),
 
   // ----- documents (via the secure BFF, not the proxy) -----
   listDocuments: (applicationId: string, opts?: RequestOpts) =>
@@ -92,7 +195,7 @@ export const api = {
 
 export interface ApplicantDocument {
   id: string; application_id: string; document_type_code: string; status: string;
-  version_no: number; scan_status: string; uploaded_at?: string;
+  version_no: number; scan_status: string; uploaded_at?: string; version_id?: string | null;
 }
 export interface UploadResult { document_type: string; version_id: string; version_no: number; scan_status: string }
 

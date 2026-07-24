@@ -17,6 +17,7 @@ import { certificatesOps } from './certificates.js';
 import { placementOps } from './placement.js';
 import { notificationsOps } from './notifications.js';
 import { centreAdminOps } from './centre-administration.js';
+import { reportsOps } from './reports.js';
 
 export const ALL_OPERATIONS: Operation[] = [
   ...authenticationOps,
@@ -35,6 +36,7 @@ export const ALL_OPERATIONS: Operation[] = [
   ...placementOps,
   ...notificationsOps,
   ...centreAdminOps,
+  ...reportsOps,
 ];
 
 export const DOMAINS = [
@@ -52,4 +54,5 @@ export const DOMAINS = [
   'placement',
   'notifications',
   'centre-administration',
+  'reports',
 ] as const;

@@ -3414,6 +3414,73 @@
         }
       }
     },
+    "/counselling/appointments": {
+      "get": {
+        "operationId": "counselling_queue",
+        "summary": "Counselling queue for the caller (counsellor / centre admin) across applications.",
+        "tags": [
+          "counselling"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/applications/{id}/admission": {
       "post": {
         "operationId": "admission_finalize",
@@ -5387,6 +5454,240 @@
         }
       }
     },
+    "/batches/{batchId}/sessions": {
+      "get": {
+        "operationId": "sessions_list",
+        "summary": "List class sessions for a batch (trainer / centre admin / student in batch).",
+        "tags": [
+          "attendance"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "batchId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/batches/{batchId}/enrolments": {
+      "get": {
+        "operationId": "batch_enrolments_list",
+        "summary": "List a batch roster (enrolments) for attendance marking.",
+        "tags": [
+          "attendance"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "batchId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/batches/{batchId}/attendance-summary": {
+      "get": {
+        "operationId": "attendance_summary",
+        "summary": "Per-session present/absent counts for a batch (attendance report).",
+        "tags": [
+          "attendance"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "in": "path",
+            "name": "batchId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/enrolments/{enrolmentId}/hostel-request": {
       "post": {
         "operationId": "hostel_request",
@@ -6561,6 +6862,140 @@
         }
       }
     },
+    "/hostel/requests": {
+      "get": {
+        "operationId": "hostel_requests_queue",
+        "summary": "Centre-wide hostel request queue (hostel manager / centre admin).",
+        "tags": [
+          "hostel"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hostel/beds": {
+      "get": {
+        "operationId": "hostel_beds_list",
+        "summary": "Bed inventory with block/room labels (hostel manager / centre admin).",
+        "tags": [
+          "hostel"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/assessments/{assessmentId}/results": {
       "post": {
         "operationId": "assessment_record_result",
@@ -7453,6 +7888,73 @@
               }
             }
           },
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/certificates": {
+      "get": {
+        "operationId": "certificates_list",
+        "summary": "List certificates for the caller’s centre (centre admin) or own (holder).",
+        "tags": [
+          "certificates"
+        ],
+        "responses": {
           "4XX": {
             "description": "Default Response",
             "content": {
@@ -9090,6 +9592,71 @@
               }
             }
           },
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "staff_list",
+        "summary": "List staff memberships at the caller’s centre(s) (centre admin) for assignment pickers.",
+        "tags": [
+          "centre-administration"
+        ],
+        "responses": {
           "4XX": {
             "description": "Default Response",
             "content": {
@@ -11075,6 +11642,341 @@
               }
             }
           },
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/verification": {
+      "get": {
+        "operationId": "reports_verification",
+        "summary": "Verification case volume by status (centre-scoped aggregate).",
+        "tags": [
+          "reports"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/counselling": {
+      "get": {
+        "operationId": "reports_counselling",
+        "summary": "Counselling appointment outcomes by status (centre-scoped aggregate).",
+        "tags": [
+          "reports"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/hostel-occupancy": {
+      "get": {
+        "operationId": "reports_hostel_occupancy",
+        "summary": "Bed occupancy by status (centre-scoped aggregate).",
+        "tags": [
+          "reports"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/certificates": {
+      "get": {
+        "operationId": "reports_certificates",
+        "summary": "Certificate issuance by status (centre-scoped aggregate).",
+        "tags": [
+          "reports"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/placement": {
+      "get": {
+        "operationId": "reports_placement",
+        "summary": "Placement referral outcomes by status (centre-scoped aggregate).",
+        "tags": [
+          "reports"
+        ],
+        "responses": {
           "4XX": {
             "description": "Default Response",
             "content": {

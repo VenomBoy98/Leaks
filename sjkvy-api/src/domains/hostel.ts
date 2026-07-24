@@ -178,4 +178,35 @@ export const hostelOps: Operation[] = [
     paramsSchema: obj({ enrolmentId: uuid }, ['enrolmentId']),
     notes: 'Scoped by policy p_hreq_sel.',
   },
+  {
+    domain: 'hostel',
+    opId: 'hostel.requests.queue',
+    method: 'GET',
+    path: '/hostel/requests',
+    auth: 'user',
+    summary: 'Centre-wide hostel request queue (hostel manager / centre admin).',
+    read: () => ({
+      text: `SELECT id, enrolment_id, status, created_at, updated_at
+             FROM app.hostel_requests ORDER BY created_at DESC LIMIT 200`,
+      values: [],
+    }),
+    notes: 'Scoped by policy p_hreq_sel — staff see their centre’s requests.',
+  },
+  {
+    domain: 'hostel',
+    opId: 'hostel.beds.list',
+    method: 'GET',
+    path: '/hostel/beds',
+    auth: 'user',
+    summary: 'Bed inventory with block/room labels (hostel manager / centre admin).',
+    read: () => ({
+      text: `SELECT b.id, b.room_id, b.bed_no, b.status, r.room_no, hb.name AS block_name
+             FROM app.beds b
+             JOIN app.rooms r ON r.id = b.room_id
+             JOIN app.hostel_blocks hb ON hb.id = r.block_id
+             ORDER BY hb.name, r.room_no, b.bed_no LIMIT 500`,
+      values: [],
+    }),
+    notes: 'Scoped by policies p_beds_sel / p_rooms_sel / p_hblocks_sel (staff at the block’s centre).',
+  },
 ];

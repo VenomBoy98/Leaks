@@ -92,4 +92,19 @@ export const counsellingOps: Operation[] = [
     paramsSchema: obj({ id: uuid }, ['id']),
     notes: 'Scoped by policy p_counsel_sel.',
   },
+  {
+    domain: 'counselling',
+    opId: 'counselling.queue',
+    method: 'GET',
+    path: '/counselling/appointments',
+    auth: 'user',
+    summary: 'Counselling queue for the caller (counsellor / centre admin) across applications.',
+    read: () => ({
+      text: `SELECT id, application_id, scheduled_at, attempt_no, status, created_at
+             FROM app.counselling_appointments
+             ORDER BY scheduled_at DESC NULLS LAST, created_at DESC LIMIT 200`,
+      values: [],
+    }),
+    notes: 'Scoped by policy p_counsel_sel — a counsellor/centre_admin sees their centre’s appointments.',
+  },
 ];
