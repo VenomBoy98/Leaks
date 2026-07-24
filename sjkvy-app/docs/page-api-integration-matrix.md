@@ -73,18 +73,19 @@ browser never sees the JWT and never sends a profileId/role/centre.
 | `/placement` | Opportunities, applications | `GET /placement/opportunities`, `/placement/referrals` | `placement_*` | apply | loading/empty | static → wiring |
 | `/student-profile` | Profile | `GET/PATCH /auth/me` | `profiles` | update | validation | static → wiring |
 
-## Staff (role: staff — centre-scoped by membership)
+## Staff (role: staff — centre-scoped by membership; all reads RLS-scoped, identity/role/centre from the session)
 
 | Route | Data displayed | Backend endpoint | DB function/table | Mutations | States | Status |
 |---|---|---|---|---|---|---|
-| `/staff-dashboard` | Queues, pending counts | `GET /verification/cases`, `GET /applications` | `verification_cases` | — | loading/empty | static → wiring |
-| `/verification` | Verification queue + doc decisions | `GET /verification/cases`, `POST /verification/cases/:id/assign`, `/decisions`, `/corrections`, `GET /documents/:v/view-url` | `fn_assign_checker`, `fn_decide_document`, `fn_request_correction` | assign/decide/correct | loading/empty/conflict(409) | static → wiring (Phase 3 core) |
-| `/counselling` | Sessions, notes | `POST /applications/:id/counselling`, `/counselling/:id/outcome` | `counselling_*` | schedule/outcome | loading | static → wiring |
-| `/staff-attendance` | Mark attendance | `POST /sessions`, `POST /sessions/:id/attendance`, `/lock` | `fn_mark_attendance` | create session/mark/lock | loading/error | static → wiring |
-| `/staff-hostel` | Rooms, occupancy | `GET .../hostel-requests`, allocate | `hostel_*` | allocate/discharge | loading | static → wiring |
-| `/staff-placement` | Listings, matches | `GET /placement/opportunities`, referrals | `placement_*` | create/refer | loading | static → wiring |
-| `/staff-reports` | Aggregate metrics | composed: `GET /batches`, `/enrolments`, `/sessions/:id/attendance` | multiple | export | loading | static → wiring |
-| `/staff-directory` | Staff list | `GET /admin/staff` (scoped) | `staff_memberships` | — | loading/empty | static → wiring |
+| `/staff-dashboard` | Real centre metrics: open verification cases, counselling appts, batches, pending hostel, certs, referrals; needs-attention queue | `GET /verification/cases`, `/counselling/appointments`, `/batches`, `/hostel/requests`, `/certificates`, `/placement/referrals` | `verification_cases`, `counselling_appointments`, `batches`, `hostel_requests`, `certificates`, `placement_referrals` (RLS-scoped) | — (cards navigate to filtered pages) | loading/empty/error | **connected** — real component + UI test |
+| `/verification` | Triage list (search/status filter); per-case assign/reassign; document review of CLEAN versions only (no storage paths); decisions | `GET /verification/cases`, `/admin/staff`, `/applications/:id/documents` (now returns `version_id`); `POST /verification/cases/:id/{assign,reassign,decisions,corrections,fail}`; `POST /api/documents/:v/view-url` (CLEAN only) | `fn_assign_checker`, `fn_reassign_checker`, `fn_decide_document`, `fn_request_correction`, `fn_fail_verification`; `v_my_documents` (0011 adds version_id) | assign/reassign/accept/reject/correct/fail (idempotency-keyed) | loading/empty/error/conflict(409)/authz | **connected** — real component + UI + integration tests |
+| `/counselling` | Appointment queue; schedule/reschedule/no-show/outcome | `GET /counselling/appointments`; `POST /applications/:id/counselling`, `/counselling/:id/{reschedule,no-show,outcome}` | `fn_counsel_schedule`, `fn_counsel_reschedule`, `fn_counsel_no_show`, `fn_counsel_outcome`; `counselling_appointments` (p_counsel_sel) | schedule/reschedule/no-show/outcome (remarks required) | loading/empty/error/invalid-transition | **connected** — real component |
+| `/staff-attendance` | Batch → session → roster; existing marks; lock | `GET /batches`, `/batches/:id/sessions`, `/batches/:id/enrolments`, `/sessions/:id/attendance`; `POST /sessions`, `/sessions/:id/attendance`, `/sessions/:id/lock` | `class_sessions` (p_sessions_sel), granted attendance upsert, `fn_lock_attendance` | create session/mark present-absent/lock | loading/empty/error/locked | **connected** — real component + UI test |
+| `/staff-hostel` | Request queue + live bed inventory (backend availability) | `GET /hostel/requests`, `/hostel/beds`; `POST /hostel/requests/:id/{approve,allocate}`, `/hostel/beds/:id/status` | `fn_hostel_approve`, `fn_hostel_allocate` (transactional), `fn_set_bed_status`; `hostel_requests`/`beds` (p_hreq_sel/p_beds_sel) | approve/allocate/toggle-bed | loading/empty/error/conflict | **connected** — real component + UI test (real bed op) |
+| `/staff-certificates` | Eligible COMPLETED enrolments + issued certs | `GET /certificates`, `/enrolments`; `POST /enrolments/:id/certificate`, `/certificates/:id/{reissue,revoke}` | `fn_cert_issue` (completion+assessment gate), `fn_cert_reissue`, `fn_cert_revoke`; `certificates` (p_cert_sel) | issue/reissue/revoke (reason required; idempotent) | loading/empty/error | **connected** — real component |
+| `/staff-placement` | Opportunities + referrals | `GET /placement/opportunities`, `/placement/referrals`; `POST /placement/opportunities/:id/referrals`, `/placement/referrals/:id/outcome`; `PATCH /placement/referrals/:id` | `fn_refer_student`, `fn_update_referral`, `fn_placement_outcome`; `placement_referrals` | refer/advance/outcome | loading/empty/error | **connected** — real component |
+| `/staff-reports` | Scoped aggregates (verification volume, counselling, hostel occupancy, cert issuance, placement) | `GET /reports/{verification,counselling,hostel-occupancy,certificates,placement}` | reports domain: GROUP BY over RLS-protected tables (counts computed in the DB) | — | loading/empty/error | **connected** — real component + integration test |
+| `/staff-directory` | Staff list | `GET /admin/staff` (RLS-scoped; profile_id+role_code) | `staff_memberships` (p_memb_sel) | — | loading/empty | partial (roster read live; used by verification pickers) |
 
 ## Centre Admin (role: admin — centre or super scoped)
 
@@ -125,5 +126,29 @@ Every route is inspected. Intentionally-static public content: `/home`, `/about`
   records CLEAN/FLAGGED, quarantines FLAGGED. Readiness reports **degraded** if unconfigured →
   files stay PENDING. No browser-reachable scan path; `/api/internal/scan` is 404 in prod.
 - **Migrations:** runners (`run_all.sh`, `setup-test-db.sh`, `deploy/db-init.sh`) now apply
-  every `migrations/[0-9]*.sql` in sorted order — 0000–0005 + 0008–0010, gap at absent
+  every `migrations/[0-9]*.sql` in sorted order — 0000–0005 + 0008–0011, gap at absent
   0006/0007 handled. Verified on a fresh database.
+
+## Phase-3 closure notes
+- **Migration ledger:** `sjkvy-db/scripts/migrate.mjs` records filename + sha256 + applied_at +
+  success in `app.schema_migrations`. Fresh DBs apply all in order; applied ones are skipped; a
+  changed checksum is a hard failure; `--baseline-through` adopts a legacy 0000–0005 DB without
+  re-running it; a late `0007_email_auth` after 0008–0011 applies exactly once (documented in
+  `sjkvy-db/docs/migrations.md`). `deploy/db-init.sh` stamps the ledger with matching checksums.
+- **Scanner uses the storage abstraction:** the worker reads object bytes through the configured
+  `StorageDriver` (local / s3 / supabase) — bounded by size + timeout, never an unbounded
+  in-memory load — and quarantines flagged objects via the driver. Object-store credentials stay
+  server-only; scan verdicts remain service-only. Config in `sjkvy-api/docs/DOCUMENT_SCANNER.md`.
+- **New staff read/aggregate endpoints (additive, RLS-scoped SELECTs — no new SECURITY DEFINER
+  functions):** `GET /batches/:id/{sessions,enrolments,attendance-summary}`,
+  `/counselling/appointments`, `/hostel/{requests,beds}`, `/certificates`, `/admin/staff`, and the
+  `reports` domain (`/reports/*`). Migration `0011_docs_version_id` appends `version_id` to
+  `v_my_documents` so the checker can decide a specific CLEAN version (storage_path still hidden).
+- **Staff authorization:** every staff request derives identity/role/centre/assignment from the
+  authenticated session; the browser never supplies profileId/role/centre/assignment/ownership/
+  document path. Enforced in the API and PostgreSQL RLS. Cross-centre isolation proven by
+  integration (`test/staff-workflow.integration.test.ts`) and browser (`scripts/staff-ui-flow.mjs`)
+  tests: a centre-2 admin sees none of centre-1's cases, beds, or aggregates.
+- **Every staff page** has loading/empty/error states and every primary button performs a real
+  authorized operation (idempotency-keyed where the backend requires it); the proxy allowlist was
+  extended with explicit method+path entries (no generic forwarder).

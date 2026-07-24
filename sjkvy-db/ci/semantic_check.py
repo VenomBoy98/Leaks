@@ -46,9 +46,11 @@ for m in re.finditer(r'ALTER TABLE app\.(\w+) ADD (?:COLUMN )?(\w+)', allsql):
         cols.setdefault(m.group(1),set()).add(m.group(2))
 print(f'INFO  parsed {len(cols)} tables')
 
-# 1. enum/CHECK value usage: status literals written must be in the column CHECK set
+# 1. enum/CHECK value usage: status literals written must be in the column CHECK set.
+# Collect CHECK-IN sets from ALL migrations (a later migration like 0010 may add a table
+# such as scan_jobs whose status domain — QUEUED/SCANNING/DONE/FAILED — is its own).
 enum={}
-for m in re.finditer(r"(\w+)\s+text[^,]*?CHECK\s*\(\s*\1\s+IN\s*\(([^)]+)\)", mig[0][1]):
+for m in re.finditer(r"(\w+)\s+text[^,]*?CHECK\s*\(\s*\1\s+IN\s*\(([^)]+)\)", allsql):
     vals=set(re.findall(r"'([^']+)'", m.group(2)))
     enum.setdefault(m.group(1),set()).update(vals)
 # check status assignments in functions: SET status='X' and status='X' comparisons
@@ -85,16 +87,19 @@ upd_bad=sorted(set(upd_bad))
 if upd_bad: F('DML: UPDATE columns exist', ', '.join(upd_bad))
 else: P('DML: UPDATE target columns all exist')
 
-# 4. grant references a table that exists
+# 4. grant references a table OR view that exists (views collected dynamically across all
+#    migrations, e.g. v_public_centres in 0009, so the allowlist never goes stale).
+views=set(re.findall(r'CREATE (?:OR REPLACE )?VIEW app\.(\w+)', allsql))
 g_bad=[]
 for m in re.finditer(r'ON app\.(\w+)\s+TO ', allsql):
-    if m.group(1) not in cols and m.group(1) not in ('v_my_documents','v_public_catalog','v_audit_centre'):
+    if m.group(1) not in cols and m.group(1) not in views:
         g_bad.append(m.group(1))
 if g_bad: F('grants: target objects exist', ', '.join(sorted(set(g_bad))))
 else: P('grants: all GRANT targets exist')
 
-# 5. function symbol resolution: every app.fn_X called is defined somewhere
-defined=set(re.findall(r'CREATE OR REPLACE FUNCTION app\.(\w+)', allsql))
+# 5. function symbol resolution: every app.fn_X called is defined somewhere. Match both
+#    CREATE FUNCTION (e.g. fn_scan_claim in 0010, whose return type changed) and CREATE OR REPLACE.
+defined=set(re.findall(r'CREATE (?:OR REPLACE )?FUNCTION app\.(\w+)', allsql))
 called=set(re.findall(r'app\.(fn_\w+|_\w+)\s*\(', allsql))
 undef=sorted(c for c in called if c not in defined)
 if undef: F('symbols: all app.fn_/helper calls defined', ', '.join(undef))

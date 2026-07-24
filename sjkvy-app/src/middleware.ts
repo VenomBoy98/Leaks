@@ -19,7 +19,7 @@ const ZONE: Record<string, "applicant" | "student" | "staff" | "admin"> = {
   "student-profile": "student",
   "staff-dashboard": "staff", verification: "staff", counselling: "staff",
   "staff-attendance": "staff", "staff-hostel": "staff", "staff-placement": "staff",
-  "staff-reports": "staff", "staff-directory": "staff",
+  "staff-reports": "staff", "staff-directory": "staff", "staff-certificates": "staff",
   "admin-dashboard": "admin", "admin-applications": "admin", "admin-admissions": "admin",
   "admin-directory": "admin", "admin-hostel": "admin", "admin-programs": "admin",
   "admin-assessments": "admin", "admin-certificates": "admin", "admin-industry": "admin",

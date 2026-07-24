@@ -4,7 +4,7 @@
 // checker opens a case, reviews CLEAN document versions (storage paths never exposed), and
 // records ACCEPT / REJECT / correction decisions. Every button calls a real authorized op and
 // surfaces backend conflict/authorization errors instead of faking UI state.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Shell from "@/components/staff/Shell";
 import { ActionButton, Modal, Table, messageOf } from "@/components/staff/ui";
 import { Loading, EmptyState, ErrorState, StatusPill, Field } from "@/components/ui/States";
@@ -147,7 +147,8 @@ function DocumentsPanel({ applicationId, caseId, onChanged }: { applicationId: s
     try { setDocs(await api.listDocuments(applicationId)); }
     catch (e) { setErr(messageOf(e)); }
   };
-  if (docs === null && err === null) void load();
+  // Load once when the panel mounts (not during render).
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [applicationId]);
 
   const viewDoc = async (d: ApplicantDocument) => {
     setViewErr(null);
