@@ -254,5 +254,7 @@ export async function devLogin(role: string): Promise<{ ok: boolean; home: strin
   return res.json();
 }
 export async function logout(): Promise<void> {
-  await fetch("/api/logout", { method: "POST", credentials: "include" });
+  // Revoke the opaque server-side session (and clear cookies); falls back to the dev logout.
+  await fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+  await fetch("/api/logout", { method: "POST", credentials: "include" }).catch(() => {});
 }
