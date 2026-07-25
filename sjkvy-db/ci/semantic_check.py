@@ -11,10 +11,10 @@ def F(n,d=''): fails.append((n,d)); print('FAIL',n,f'[{d}]' if d else '')
 def P(n): print('PASS',n)
 def W(n,d=''): warns.append((n,d)); print('WARN',n,f'[{d}]' if d else '')
 
-# --- build column model from 0000 ---
+# --- build column model from ALL migrations (0000 core + later additive tables) ---
 cols={}
 # split on CREATE TABLE, take text up to the line that closes with );
-schema_txt = mig[0][1]
+schema_txt = '\n'.join(m[1] for m in mig)
 for blk in re.split(r'(?=CREATE TABLE app\.)', schema_txt):
     hm = re.match(r'CREATE TABLE app\.(\w+)\s*\(', blk)
     if not hm: continue
