@@ -14,14 +14,12 @@ const VIEW_SECRET = process.env.STORAGE_VIEW_SECRET ?? "";
 
 /** Verified caller profile id from the httpOnly session cookie, or null. */
 export async function getCaller(): Promise<string | null> {
-  const token = cookies().get("sjkvy_token")?.value;
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, SESSION_SECRET());
-    return typeof payload.sub === "string" ? payload.sub : null;
-  } catch {
-    return null;
-  }
+  // Prefer the opaque server-side session (introspected by the API); fall back to the dev-login
+  // JWT for dev/test. Keeps the document BFF (upload/view) working under real sessions too.
+  const { resolveCaller } = await import("@/lib/authServer");
+  const caller = await resolveCaller();
+  if (caller) return caller.profileId;
+  return null;
 }
 
 async function service<T>(method: string, path: string, body: unknown): Promise<{ status: number; data: T | null }> {

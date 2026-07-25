@@ -3,8 +3,8 @@
 // method+path combinations on an explicit allowlist of USER-facing endpoints. It can never be
 // used to reach service-role operations (finalize/scan/view-url) or arbitrary paths, and it
 // never accepts a caller/role/centre from the browser. UUID path params are validated.
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { resolveCaller, mintApiJwt } from "@/lib/authServer";
 
 const API = (process.env.API_BASE_URL ?? "http://127.0.0.1:8080").replace(/\/$/, "");
 const U = "[0-9a-fA-F-]{36}"; // uuid path param
@@ -103,7 +103,17 @@ async function forward(req: Request, parts: string[]) {
   if (!isAllowed(method, path)) {
     return NextResponse.json({ code: "E.AUTHZ.FORBIDDEN", message: "Not permitted." }, { status: 403 });
   }
-  const token = cookies().get("sjkvy_token")?.value;
+  // Resolve the caller from the opaque session (or the dev-login JWT) and mint a short-lived API
+  // JWT server-side — the browser never holds an API token.
+  const caller = await resolveCaller();
+  // CSRF: cookie-authenticated state-changing requests must present a matching double-submit token.
+  if (caller?.csrfCookie && method !== "GET" && method !== "HEAD") {
+    const header = req.headers.get("x-sjkvy-csrf");
+    if (!header || header !== caller.csrfCookie) {
+      return NextResponse.json({ code: "E.AUTHZ.CSRF", message: "Invalid CSRF token." }, { status: 403 });
+    }
+  }
+  const token = caller ? await mintApiJwt(caller.profileId) : undefined;
   const url = new URL(req.url);
   // forward only a whitelisted set of query params (pagination / filter / search)
   const allowedQ = new URLSearchParams();

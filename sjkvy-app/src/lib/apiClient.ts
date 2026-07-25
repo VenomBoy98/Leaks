@@ -91,6 +91,11 @@ async function request<T>(method: string, path: string, body: unknown, opts: Req
   const headers: Record<string, string> = { accept: "application/json", ...(opts.headers ?? {}) };
   if (body !== undefined) headers["content-type"] = "application/json";
   if (opts.idempotencyKey) headers["idempotency-key"] = opts.idempotencyKey;
+  // CSRF double-submit: echo the readable csrf cookie on state-changing requests.
+  if (method !== "GET" && method !== "HEAD" && typeof document !== "undefined") {
+    const csrf = document.cookie.split("; ").find((c) => c.startsWith("sjkvy_csrf="))?.split("=")[1];
+    if (csrf) headers["x-sjkvy-csrf"] = decodeURIComponent(csrf);
+  }
 
   try {
     const res = await fetch(buildUrl(path, opts.query), {

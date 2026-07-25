@@ -5,6 +5,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Config } from './config.js';
 import { createAuthRepo, AuthError } from './auth-repo.js';
+import { getCapturedEmails } from './auth-core/email.js';
 
 function requireService(req: FastifyRequest, cfg: Config): void {
   const h = req.headers.authorization;
@@ -90,5 +91,18 @@ export function registerAuth(app: FastifyInstance, cfg: Config): void {
     requireService(req, cfg);
     const b = body<{ token: string }>(req);
     await handle(reply, async () => { await repo.logout(b.token); return { ok: true }; });
+  });
+
+  // DEV/TEST ONLY — retrieve the last captured OTP for an email. Exists solely to enable
+  // cross-process end-to-end tests. Available only when the FAKE email provider is active (which
+  // config validation forbids in production), and returns 404 otherwise. Never leaks in prod.
+  app.post('/auth/dev/last-otp', opts, async (req, reply) => {
+    requireService(req, cfg);
+    if (cfg.auth.emailProvider !== 'fake') { reply.status(404).send({ code: 'E.NOT_FOUND' }); return; }
+    const b = body<{ email: string }>(req);
+    const norm = (b.email ?? '').trim().toLowerCase();
+    const msgs = getCapturedEmails().filter((m) => m.to === norm && /Code: \d{6}/.test(m.text));
+    const otp = msgs.length ? msgs[msgs.length - 1].text.match(/Code: (\d{6})/)?.[1] : null;
+    reply.send({ otp });
   });
 }
