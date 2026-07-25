@@ -4,8 +4,9 @@ Repo: `/home/user/Leaks` · Branch: `claude/sjkvy-repository-audit-fpd58e` (work
 all commits pushed). The older `/home/user/sjkvy` is a redundant copy — do not edit it.
 
 ## Last successful commit
-`5aefb8c Auth (3/6): Next BFF auth routes + opaque sessions + CSRF`
-(chain: `ef336c4` design+migration → `3c8ab12` API layer → `5aefb8c` BFF+sessions)
+`a4c1739 Auth (4/6): frontend auth pages (register / login / OTP / forgot-reset)`
+(chain: `ef336c4` design+migration → `3c8ab12` API layer → `5aefb8c` BFF+sessions →
+`a4c1739` frontend auth pages)
 
 ## Uncommitted files
 None. `git status --short` is empty; `git log @{upstream}..HEAD` is empty (nothing unpushed).
@@ -28,11 +29,10 @@ None. `git status --short` is empty; `git log @{upstream}..HEAD` is empty (nothi
   `apiClient` updated. 2 e2e tests green; full app suite (58) still green.
 
 ## Remaining (Tasks 11–12) — next work, in priority order
-1. **Frontend auth pages** (`sjkvy-app/src/app/`): `register`, `login`, OTP-verify step (shared
-   accessible 6-digit input: typing/paste/keyboard-nav/labels, resend countdown), `forgot-password`
-   + `reset-password`, session-expired + account-suspended + unauthorized states, role-aware nav.
-   Wire to `/api/auth/*`. Preserve the SJKVY design system (see `components/staff/ui.tsx`,
-   `components/ui/States.tsx`). Redirect to `home` from the verify response.
+1. **Frontend auth pages** — DONE (`a4c1739`): `/register`, `/login` (both with the shared
+   accessible `OtpInput` + resend countdown), `/forgot-password` (request→reset), `AuthCard`
+   design shell, `lib/authClient`. Verified by `scripts/auth-ui-flow.mjs` + production build.
+   Still nice-to-add: explicit account-suspended / session-expired banners + role-aware public nav.
 2. **Role codes** (API + BFF + UI): add to `auth-repo.ts` — `createRoleCode` (160-bit, digest-only,
    plaintext shown once), `redeemRoleCode` (authenticated+verified+active user; atomic
    `UPDATE ... WHERE use_count < max_uses` guarded + insert redemption + staff_memberships insert,
