@@ -34,6 +34,18 @@ export const cfg: Config = {
     allowedMime: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
     publicBaseUrl: 'http://127.0.0.1:8080/storage',
   },
+  auth: {
+    otpHmacSecret: 'test-otp-hmac-secret-please-change-32chars',
+    emailProvider: 'fake',
+    resendApiKey: undefined,
+    emailFrom: 'SJKVY <no-reply@sjkvy.test>',
+    appUrl: 'http://127.0.0.1:3000',
+    sessionTtlSec: 3600,
+    otpResendCooldownSec: 0,     // relaxed for deterministic tests (throttling tested separately)
+    otpHourlyEmailCap: 1000,
+    otpHourlyIpCap: 100000,
+    otpMaxAttempts: 5,
+  },
   serviceToken: SERVICE_TOKEN,
   logLevel: 'warn',
   corsOrigins: [],

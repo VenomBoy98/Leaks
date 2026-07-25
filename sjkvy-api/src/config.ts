@@ -27,6 +27,23 @@ export interface StorageConfig {
   publicBaseUrl: string;
 }
 
+export interface AuthConfig {
+  // Server-only key for HMAC-SHA256 of OTPs (low-entropy 6-digit codes are never stored raw).
+  otpHmacSecret: string | undefined;
+  // Email provider: 'resend' for production; 'fake' captures in-memory for dev/tests only.
+  emailProvider: 'resend' | 'fake';
+  resendApiKey: string | undefined;
+  emailFrom: string;
+  appUrl: string;
+  // Opaque session lifetime (seconds).
+  sessionTtlSec: number;
+  // OTP throttling (secure defaults; relaxed only in the test harness).
+  otpResendCooldownSec: number;
+  otpHourlyEmailCap: number;
+  otpHourlyIpCap: number;
+  otpMaxAttempts: number;
+}
+
 export interface Config {
   nodeEnv: NodeEnv;
   port: number;
@@ -35,6 +52,7 @@ export interface Config {
   pgPoolMax: number;
   jwt: JwtConfig;
   storage: StorageConfig;
+  auth: AuthConfig;
   serviceToken: string | undefined;
   logLevel: string;
   // CORS allowlist (comma-separated origins); empty = same-origin only.
@@ -99,6 +117,18 @@ export function loadConfig(): Config {
         : ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
       publicBaseUrl: env('STORAGE_PUBLIC_BASE_URL', 'http://localhost:8080/storage')!,
     },
+    auth: {
+      otpHmacSecret: env('OTP_HMAC_SECRET'),
+      emailProvider: (env('EMAIL_PROVIDER', isProd ? 'resend' : 'fake') as 'resend' | 'fake'),
+      resendApiKey: env('RESEND_API_KEY'),
+      emailFrom: env('EMAIL_FROM', 'SJKVY <no-reply@sjkvy.local>')!,
+      appUrl: env('APP_URL', 'http://localhost:3000')!,
+      sessionTtlSec: num('AUTH_SESSION_TTL_SEC', 12 * 60 * 60),
+      otpResendCooldownSec: num('OTP_RESEND_COOLDOWN_SEC', 60),
+      otpHourlyEmailCap: num('OTP_HOURLY_EMAIL_CAP', 6),
+      otpHourlyIpCap: num('OTP_HOURLY_IP_CAP', 30),
+      otpMaxAttempts: num('OTP_MAX_ATTEMPTS', 5),
+    },
     serviceToken: env('SERVICE_TOKEN'),
     logLevel: env('LOG_LEVEL', isProd ? 'info' : 'debug')!,
     corsOrigins: csv('CORS_ORIGINS'),
@@ -128,6 +158,15 @@ function validate(cfg: Config, isProd: boolean): void {
     }
     if (!cfg.storage.urlSigningSecret || cfg.storage.urlSigningSecret.length < 32) {
       problems.push('STORAGE_URL_SIGNING_SECRET must be set and >= 32 chars in production.');
+    }
+    if (!cfg.auth.otpHmacSecret || cfg.auth.otpHmacSecret.length < 32) {
+      problems.push('OTP_HMAC_SECRET must be set and >= 32 chars in production.');
+    }
+    if (cfg.auth.emailProvider === 'fake') {
+      problems.push('EMAIL_PROVIDER must not be "fake" in production (real email required).');
+    }
+    if (cfg.auth.emailProvider === 'resend' && (!cfg.auth.resendApiKey || !cfg.auth.emailFrom)) {
+      problems.push('RESEND_API_KEY and EMAIL_FROM are required when EMAIL_PROVIDER=resend.');
     }
     if (cfg.databaseUrl.includes('@localhost') || cfg.databaseUrl.includes('@127.0.0.1')) {
       // allowed but warn-worthy; not fatal (compose networks vary)

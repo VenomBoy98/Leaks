@@ -65,10 +65,25 @@ async function withActor<T>(
     return out;
   } catch (err) {
     await client.query('ROLLBACK').catch(() => undefined);
+    // Application-level errors thrown by the callback (e.g. AuthError/ApiError with an intended
+    // HTTP status) pass through unchanged; only genuine database errors are mapped/masked.
+    const name = (err as { name?: string })?.name;
+    if (name === 'AuthError' || name === 'ApiError') throw err;
     throw mapPgError(err);
   } finally {
     client.release();
   }
+}
+
+// withServiceTx — run a multi-statement transaction as service_role (auth.uid() -> NULL unless
+// a uid is supplied). Used by the first-party auth repository, which operates the service-only
+// auth_* tables directly (they grant DML to service_role). Everything runs in ONE transaction so
+// OTP consumption and role-code redemption are atomic.
+export async function withServiceTx<T>(
+  body: (client: pg.PoolClient) => Promise<T>,
+  uid: string | null = null,
+): Promise<T> {
+  return withActor({ role: 'service_role', uid }, body);
 }
 
 // callFn — invoke a catalogue function `app.<fn>(...)` positionally and return its

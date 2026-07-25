@@ -12,6 +12,7 @@ import { ApiError } from './errors.js';
 import { recordDbError, registerMetrics, metricsText } from './observability.js';
 import { registerOperations } from './router.js';
 import { registerStorage } from './storage-routes.js';
+import { registerAuth } from './auth-routes.js';
 import { ALL_OPERATIONS } from './domains/index.js';
 import { pingDb } from './db.js';
 import type { Config } from './config.js';
@@ -144,5 +145,6 @@ export async function buildServer(cfg: Config): Promise<FastifyInstance> {
 
   registerOperations(app, cfg, ALL_OPERATIONS);
   registerStorage(app, cfg);
+  registerAuth(app, cfg);
   return app;
 }
