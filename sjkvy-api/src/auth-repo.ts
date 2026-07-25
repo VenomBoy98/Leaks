@@ -101,6 +101,9 @@ export function createAuthRepo(cfg: Config) {
   }
 
   async function createSession(client: PoolClient, profileId: string, ip: string): Promise<SessionResult> {
+    // A user suspended between the password/OTP step and verification must not receive a session.
+    const active = await client.query(`SELECT 1 FROM app.profiles WHERE id=$1 AND is_active`, [profileId]);
+    if (!active.rowCount) throw new AuthError(403, 'E.AUTH.SUSPENDED', 'This account is not active.');
     const token = newSessionToken();
     const csrf = newSessionToken();
     await client.query(
@@ -280,9 +283,12 @@ export function createAuthRepo(cfg: Config) {
     async introspect(token: string): Promise<{ profileId: string; roles: string[]; csrfValid: (csrf: string) => boolean } | null> {
       if (!token) return null;
       return withServiceTx(async (client) => {
+        // Re-check the account is still active on every request: a suspended/deactivated user
+        // must lose access immediately, not only when their session expires.
         const q = await client.query<{ id: string; profile_id: string; csrf_digest: string }>(
-          `SELECT id, profile_id, csrf_digest FROM app.auth_sessions
-            WHERE token_digest=$1 AND revoked_at IS NULL AND expires_at > now()`, [sha256(token)]);
+          `SELECT s.id, s.profile_id, s.csrf_digest
+             FROM app.auth_sessions s JOIN app.profiles p ON p.id = s.profile_id
+            WHERE s.token_digest=$1 AND s.revoked_at IS NULL AND s.expires_at > now() AND p.is_active`, [sha256(token)]);
         if (!q.rowCount) return null;
         await client.query(`UPDATE app.auth_sessions SET last_seen_at=now() WHERE id=$1`, [q.rows[0].id]);
         const roles = await resolveRoles(client, q.rows[0].profile_id);

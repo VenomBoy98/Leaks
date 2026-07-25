@@ -170,6 +170,20 @@ describe('sessions', () => {
   });
 });
 
+describe('suspension revokes access', () => {
+  it('a suspended account\'s existing session stops working immediately', async () => {
+    const e = email();
+    const ch = (await post('/auth/register', { name: 'Suspend Me', email: e, password: PW })).json();
+    const s = (await post('/auth/register/verify', { challengeId: ch.challengeId, otp: lastOtpFor(e) })).json();
+    expect((await post('/auth/session/introspect', { token: s.token })).statusCode).toBe(200);
+    // suspend the account out-of-band (as an admin would)
+    await admin.query(`UPDATE app.profiles SET is_active=false WHERE id=$1`, [s.profileId]);
+    expect((await post('/auth/session/introspect', { token: s.token })).statusCode).toBe(401);
+    // and they cannot log in either
+    expect((await post('/auth/login', { email: e, password: PW })).statusCode).toBeGreaterThanOrEqual(400);
+  });
+});
+
 describe('no plaintext secrets stored', () => {
   it('otp_digest is a 64-hex HMAC and no plaintext OTP column exists', async () => {
     const cols = await admin.query(
