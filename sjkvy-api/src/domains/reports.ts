@@ -59,4 +59,25 @@ export const reportsOps: Operation[] = [
     read: () => groupByStatus('placement_referrals'),
     notes: 'GROUP BY over app.placement_referrals; scoped by placement referral RLS.',
   },
+  {
+    domain: 'reports',
+    opId: 'reports.processing_time',
+    method: 'GET',
+    path: '/reports/processing-time',
+    auth: 'user',
+    summary: 'Application processing time (submit → decision) computed in the DB, centre-scoped.',
+    read: () => ({
+      // Durations are aggregated server-side over RLS-protected applications, so the numbers
+      // reflect only the caller's centre and are never derived from a partial client page.
+      text: `SELECT count(*)::int AS decided,
+                    round(avg(extract(epoch FROM (updated_at - submitted_at)) / 86400.0)::numeric, 1) AS avg_days,
+                    round((percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (updated_at - submitted_at)) / 86400.0))::numeric, 1) AS median_days,
+                    round(max(extract(epoch FROM (updated_at - submitted_at)) / 86400.0)::numeric, 1) AS max_days
+             FROM app.applications
+             WHERE status = 'DECIDED' AND submitted_at IS NOT NULL`,
+      values: [],
+      single: true,
+    }),
+    notes: 'Aggregate over app.applications (submitted → decided); scoped by the applications RLS.',
+  },
 ];

@@ -122,10 +122,16 @@ export const verificationOps: Operation[] = [
     auth: 'user',
     summary: 'List verification cases visible to the caller (owner / checker / admin).',
     read: () => ({
-      text: `SELECT id, application_id, status, created_at, updated_at
-             FROM app.verification_cases ORDER BY updated_at DESC LIMIT 200`,
+      // assigned_to (active checker) is surfaced via the RLS-scoped assignment table so the UI
+      // can offer an "assigned to me" queue and show the assignee. p_vassign_sel returns the
+      // row only to that checker or the case's centre_admin, so no assignment leaks cross-role.
+      text: `SELECT vc.id, vc.application_id, vc.status, vc.created_at, vc.updated_at,
+                    va.checker_profile_id AS assigned_to
+             FROM app.verification_cases vc
+             LEFT JOIN app.verification_assignments va ON va.case_id = vc.id AND va.active
+             ORDER BY vc.updated_at DESC LIMIT 200`,
       values: [],
     }),
-    notes: 'Scoped by policy p_vcases_sel.',
+    notes: 'Scoped by policy p_vcases_sel; assignee via p_vassign_sel.',
   },
 ];

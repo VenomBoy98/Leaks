@@ -194,6 +194,26 @@ export const hostelOps: Operation[] = [
   },
   {
     domain: 'hostel',
+    opId: 'hostel.allocations.list',
+    method: 'GET',
+    path: '/hostel/allocations',
+    auth: 'user',
+    summary: 'Active bed allocations with block/room/bed labels (hostel manager / centre admin).',
+    read: () => ({
+      text: `SELECT ha.id, ha.bed_id, ha.enrolment_id, ha.allocated_at,
+                    b.bed_no, r.room_no, hb.name AS block_name
+             FROM app.hostel_allocations ha
+             JOIN app.beds b ON b.id = ha.bed_id
+             JOIN app.rooms r ON r.id = b.room_id
+             JOIN app.hostel_blocks hb ON hb.id = r.block_id
+             WHERE ha.released_at IS NULL
+             ORDER BY hb.name, r.room_no, b.bed_no LIMIT 500`,
+      values: [],
+    }),
+    notes: 'Scoped by p_halloc_sel (owner or hostel_manager/centre_admin at the bed’s centre).',
+  },
+  {
+    domain: 'hostel',
     opId: 'hostel.beds.list',
     method: 'GET',
     path: '/hostel/beds',

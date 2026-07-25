@@ -16,10 +16,17 @@ export default function Placement() {
   const refs = useReferrals();
   const [referTo, setReferTo] = useState<PlacementOpportunity | null>(null);
   const [outcomeFor, setOutcomeFor] = useState<PlacementReferral | null>(null);
+  const [newEmployer, setNewEmployer] = useState(false);
+  const [newOpp, setNewOpp] = useState(false);
   const refetch = () => { refs.mutate(); refresh.referrals(); };
+  const refetchOpps = () => { opps.mutate(); };
 
   return (
-    <Shell title="Placement" subtitle="Opportunities and student referrals">
+    <Shell title="Placement" subtitle="Employers, opportunities and student referrals">
+      <div className="mb-4 flex justify-end gap-2">
+        <button onClick={() => setNewEmployer(true)} className="rounded-lg border border-outline/40 px-4 py-2 font-label-md text-on-surface hover:bg-surface-container-high">New employer</button>
+        <button onClick={() => setNewOpp(true)} className="rounded-lg bg-primary px-4 py-2 font-label-md text-on-primary hover:bg-primary-container">New opportunity</button>
+      </div>
       <section className="mb-8">
         <h2 className="mb-3 font-display-md text-title-lg text-primary">Opportunities</h2>
         {opps.isLoading ? <Loading label="Loading opportunities…" /> : opps.error ? (
@@ -66,7 +73,59 @@ export default function Placement() {
 
       {referTo && <ReferModal opportunity={referTo} onClose={() => setReferTo(null)} onDone={() => { setReferTo(null); refetch(); }} />}
       {outcomeFor && <OutcomeModal referral={outcomeFor} onClose={() => setOutcomeFor(null)} onDone={() => { setOutcomeFor(null); refetch(); }} />}
+      {newEmployer && <EmployerModal onClose={() => setNewEmployer(false)} onDone={() => setNewEmployer(false)} />}
+      {newOpp && <OpportunityModal onClose={() => setNewOpp(false)} onDone={() => { setNewOpp(false); refetchOpps(); }} />}
     </Shell>
+  );
+}
+
+function EmployerModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [district, setDistrict] = useState("");
+  const [created, setCreated] = useState<string | null>(null);
+  return (
+    <Modal title="New employer" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        {created ? (
+          <p className="rounded-lg bg-secondary-container/50 p-3 font-body-md text-on-secondary-container">
+            Employer created. ID: <span className="font-mono">{created}</span> — use it when creating an opportunity.
+          </p>
+        ) : (
+          <>
+            <Field label="Name"><input value={name} onChange={(e) => setName(e.target.value)} className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+            <Field label="Contact"><input value={contact} onChange={(e) => setContact(e.target.value)} className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+            <Field label="District"><input value={district} onChange={(e) => setDistrict(e.target.value)} className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+            <ActionButton variant="primary" disabled={name.trim().length < 2}
+              onRun={async () => { const r = await api.createEmployer({ name, contact: contact || undefined, district: district || undefined }); setCreated(r.employer_id); }}>
+              Create employer
+            </ActionButton>
+          </>
+        )}
+        {created && <button onClick={onDone} className="rounded-lg bg-primary px-4 py-2 font-label-md text-on-primary">Done</button>}
+      </div>
+    </Modal>
+  );
+}
+
+function OpportunityModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
+  const [employerId, setEmployerId] = useState("");
+  const [title, setTitle] = useState("");
+  const [openings, setOpenings] = useState("1");
+  const [closesOn, setClosesOn] = useState("");
+  return (
+    <Modal title="New opportunity" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <Field label="Employer ID"><input value={employerId} onChange={(e) => setEmployerId(e.target.value)} placeholder="uuid" className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+        <Field label="Title"><input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+        <Field label="Openings"><input type="number" min="1" value={openings} onChange={(e) => setOpenings(e.target.value)} className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+        <Field label="Closes on"><input type="date" value={closesOn} onChange={(e) => setClosesOn(e.target.value)} className="rounded-lg border border-outline/40 bg-surface px-3 py-2 font-body-md" /></Field>
+        <ActionButton variant="primary" disabled={!/^[0-9a-fA-F-]{36}$/.test(employerId) || title.trim().length < 2 || Number(openings) < 1}
+          onRun={() => api.createOpportunity({ employer_id: employerId, title, openings: Number(openings), closes_on: closesOn || undefined })} onDone={onDone}>
+          Create opportunity
+        </ActionButton>
+      </div>
+    </Modal>
   );
 }
 

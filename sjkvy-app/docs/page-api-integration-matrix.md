@@ -152,3 +152,23 @@ Every route is inspected. Intentionally-static public content: `/home`, `/about`
 - **Every staff page** has loading/empty/error states and every primary button performs a real
   authorized operation (idempotency-keyed where the backend requires it); the proxy allowlist was
   extended with explicit method+path entries (no generic forwarder).
+
+## Phase-3 sub-feature completion (follow-up)
+- **Verification:** cases read now surfaces the active assignee (`assigned_to`, via the RLS-scoped
+  `verification_assignments` / `p_vassign_sel` — no schema change); UI adds an **assigned-to-me**
+  filter, an assignee column, and client-side **pagination**. Concurrent assignment proven safe:
+  two parallel assigns leave exactly one active assignment (`concurrency.integration`).
+- **Attendance:** **bulk** mark-all-present / mark-all-absent over the roster (idempotent upserts).
+- **Hostel:** active-resident list (`GET /hostel/allocations`, RLS `p_halloc_sel`) with
+  **discharge** (reason required) freeing the bed. Bed/seat allocation races already covered by the
+  DB concurrency suite.
+- **Placement:** create **employer** and create **opportunity** (existing `fn_*` ops), plus
+  refer/advance/outcome.
+- **Reports:** added a real **processing-time** aggregate (`GET /reports/processing-time` — avg /
+  median / max days from submit → decision, computed in the DB over RLS-scoped applications).
+- **0011 authorization proven** (`staff-workflow.integration`): authorized staff see `version_id`,
+  cross-centre + unrelated-applicant denial, and no `storage_path` leakage.
+- **Confirmed gaps (need deeper backend work, deliberately not faked):** counselling *cancellation*
+  (no cancel op — only reschedule/no-show/outcome exist); placement *eligible-students* picker
+  (no consented-student list endpoint — refer takes a placement_profile_id); document-decision
+  *audit/history* timeline (would need an audit read scoped to the case).

@@ -91,11 +91,19 @@ function RosterModal({ session, batchId, onClose, onLocked }: { session: ClassSe
 
   return (
     <Modal title={`Roster · ${session.session_date}`} onClose={onClose}>
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="font-caption text-on-surface-variant">{present} present of {(att.data ?? []).length} marked{locked ? " · locked" : ""}</p>
         {!locked && (
-          <ActionButton variant="danger" confirm="Lock this session? Marks can only be corrected afterwards."
-            onRun={() => api.lockSession(session.id)} onDone={onLocked}>Lock session</ActionButton>
+          <div className="flex flex-wrap gap-2">
+            <ActionButton variant="ghost"
+              onRun={async () => { for (const e of roster.data ?? []) await api.markAttendance(session.id, { enrolment_id: e.id, present: true }); }}
+              onDone={() => att.mutate()}>Mark all present</ActionButton>
+            <ActionButton variant="ghost"
+              onRun={async () => { for (const e of roster.data ?? []) await api.markAttendance(session.id, { enrolment_id: e.id, present: false }); }}
+              onDone={() => att.mutate()}>Mark all absent</ActionButton>
+            <ActionButton variant="danger" confirm="Lock this session? Marks can only be corrected afterwards."
+              onRun={() => api.lockSession(session.id)} onDone={onLocked}>Lock session</ActionButton>
+          </div>
         )}
       </div>
       {roster.isLoading ? <Loading label="Loading roster…" /> : roster.error ? <ErrorState message="Could not load roster." onRetry={() => roster.mutate()} /> : (roster.data ?? []).length === 0 ? (

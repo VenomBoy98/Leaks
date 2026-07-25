@@ -8,24 +8,35 @@ import { useEffect, useMemo, useState } from "react";
 import Shell from "@/components/staff/Shell";
 import { ActionButton, Modal, Table, messageOf } from "@/components/staff/ui";
 import { Loading, EmptyState, ErrorState, StatusPill, Field } from "@/components/ui/States";
-import { useVerificationCases, useStaff, refresh } from "@/lib/hooks";
+import { useVerificationCases, useStaff, useMe, refresh } from "@/lib/hooks";
 import { api, documentViewUrl, type ApplicantDocument, type VerificationCase } from "@/lib/api";
+
+const PAGE_SIZE = 15;
 
 export default function VerificationQueue() {
   const { data: cases, isLoading, error, mutate } = useVerificationCases();
+  const { data: me } = useMe();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
+  const [page, setPage] = useState(0);
   const [openCase, setOpenCase] = useState<VerificationCase | null>(null);
 
   const filtered = useMemo(() => {
     let rows = cases ?? [];
+    if (mineOnly && me?.id) rows = rows.filter((c) => c.assigned_to === me.id);
     if (statusFilter) rows = rows.filter((c) => c.status === statusFilter);
     if (q.trim()) {
       const s = q.trim().toLowerCase();
       rows = rows.filter((c) => c.application_id.toLowerCase().includes(s) || c.id.toLowerCase().includes(s));
     }
     return rows;
-  }, [cases, q, statusFilter]);
+  }, [cases, q, statusFilter, mineOnly, me?.id]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  // keep the page index in range when filters shrink the list
+  if (page > 0 && page >= pageCount) setPage(0);
 
   const statuses = useMemo(() => Array.from(new Set((cases ?? []).map((c) => c.status))).sort(), [cases]);
 
@@ -43,6 +54,10 @@ export default function VerificationQueue() {
             {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </Field>
+        <label className="flex items-center gap-2 font-body-md text-on-surface">
+          <input type="checkbox" checked={mineOnly} onChange={(e) => { setMineOnly(e.target.checked); setPage(0); }} data-testid="mine-only" />
+          Assigned to me
+        </label>
         <button onClick={() => mutate()} className="rounded-lg border border-outline/40 px-3 py-2 font-label-md text-on-surface hover:bg-surface-container-high">
           Refresh
         </button>
@@ -55,21 +70,35 @@ export default function VerificationQueue() {
       ) : filtered.length === 0 ? (
         <EmptyState icon="fact_check" title="No cases" hint="No verification cases match your filters for this centre." />
       ) : (
-        <Table head={["Case", "Application", "Status", "Updated", "Actions"]}>
-          {filtered.map((c) => (
-            <tr key={c.id} className="border-b border-outline/10 last:border-0 align-top">
-              <td className="px-4 py-3 font-body-md">{c.id.slice(0, 8)}</td>
-              <td className="px-4 py-3 font-body-md text-on-surface-variant">{c.application_id.slice(0, 8)}</td>
-              <td className="px-4 py-3"><StatusPill status={c.status} /></td>
-              <td className="px-4 py-3 font-caption text-on-surface-variant">{c.updated_at ? new Date(c.updated_at).toLocaleDateString() : "—"}</td>
-              <td className="px-4 py-3">
-                <button onClick={() => setOpenCase(c)} className="rounded-lg bg-primary px-3 py-1.5 font-label-md text-on-primary hover:bg-primary-container">
-                  Open
-                </button>
-              </td>
-            </tr>
-          ))}
-        </Table>
+        <>
+          <Table head={["Case", "Application", "Status", "Assignee", "Updated", "Actions"]}>
+            {pageRows.map((c) => (
+              <tr key={c.id} className="border-b border-outline/10 last:border-0 align-top">
+                <td className="px-4 py-3 font-body-md">{c.id.slice(0, 8)}</td>
+                <td className="px-4 py-3 font-body-md text-on-surface-variant">{c.application_id.slice(0, 8)}</td>
+                <td className="px-4 py-3"><StatusPill status={c.status} /></td>
+                <td className="px-4 py-3 font-caption text-on-surface-variant">
+                  {c.assigned_to ? (c.assigned_to === me?.id ? "You" : c.assigned_to.slice(0, 8)) : "Unassigned"}
+                </td>
+                <td className="px-4 py-3 font-caption text-on-surface-variant">{c.updated_at ? new Date(c.updated_at).toLocaleDateString() : "—"}</td>
+                <td className="px-4 py-3">
+                  <button onClick={() => setOpenCase(c)} className="rounded-lg bg-primary px-3 py-1.5 font-label-md text-on-primary hover:bg-primary-container">
+                    Open
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </Table>
+          <div className="mt-3 flex items-center justify-between font-caption text-on-surface-variant">
+            <span>{filtered.length} case{filtered.length === 1 ? "" : "s"} · page {page + 1} of {pageCount}</span>
+            <span className="flex gap-2">
+              <button disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}
+                className="rounded-lg border border-outline/40 px-3 py-1.5 font-label-md disabled:opacity-40">Prev</button>
+              <button disabled={page + 1 >= pageCount} onClick={() => setPage((p) => p + 1)}
+                className="rounded-lg border border-outline/40 px-3 py-1.5 font-label-md disabled:opacity-40">Next</button>
+            </span>
+          </div>
+        </>
       )}
 
       {openCase && (

@@ -6,6 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import pg from 'pg';
+import { randomUUID } from 'node:crypto';
 import { ACTORS, SEED, cfg, makeApp, teardown, userAuth, idemHeaders } from './helpers.js';
 
 let app: FastifyInstance;
@@ -99,6 +100,44 @@ afterAll(async () => {
   await pool.end();
   await app.close();
   await teardown();
+});
+
+// Stage an application only up to SUBMITTED — a verification case exists in PENDING_ASSIGNMENT,
+// before any checker is assigned. Distinct applicant per call to avoid the single-active-app rule.
+async function stageToSubmitted(applicantSub: string): Promise<string> {
+  const auth = await userAuth(applicantSub);
+  const create = await app.inject({ method: 'POST', url: '/applications', headers: auth, payload: { course_id: SEED.course, dob: '2001-02-03', gender: 'F', district: 'Hazaribagh' } });
+  const appId = create.json().application_id;
+  const up = await app.inject({
+    method: 'POST', url: '/documents/finalize',
+    headers: { authorization: `Bearer ${process.env.SVC ?? 'test-service-token'}` },
+    payload: { caller: applicantSub, application_id: appId, document_type: 'MATRIC', storage_path: `q/${appId}`, mime: 'image/jpeg', size: 1000, sha256: 'sha' },
+  });
+  await app.inject({ method: 'POST', url: `/documents/${up.json().version_id}/scan-result`, headers: { authorization: `Bearer ${process.env.SVC ?? 'test-service-token'}` }, payload: { status: 'CLEAN' } });
+  await app.inject({ method: 'POST', url: `/applications/${appId}/submit`, headers: { ...auth, ...idemHeaders() } });
+  return appId;
+}
+
+describe('staff assignment race (concurrent assign yields one active assignment)', () => {
+  it('two parallel assigns of the same case leave exactly one active assignment', async () => {
+    // throwaway applicant so this never collides with the seat-race applicants
+    const sub = randomUUID();
+    await pool.query("INSERT INTO app.profiles (id,full_name,phone,preferred_lang,is_active) VALUES ($1,'Race Applicant',$2,'en',true)", [sub, '+9198' + Math.floor(1e8 + Math.random() * 8e8)]);
+    const appId = await stageToSubmitted(sub);
+    const caseRow = await pool.query(`SELECT id FROM app.verification_cases WHERE application_id = $1`, [appId]);
+    const caseId = caseRow.rows[0].id;
+    const cadAuth = await userAuth(ACTORS.cad1);
+    // fire two concurrent assignments (distinct idempotency keys) to the same checker
+    const [r1, r2] = await Promise.all([
+      app.inject({ method: 'POST', url: `/verification/cases/${caseId}/assign`, headers: { ...cadAuth, ...idemHeaders() }, payload: { checker: ACTORS.checker } }),
+      app.inject({ method: 'POST', url: `/verification/cases/${caseId}/assign`, headers: { ...cadAuth, ...idemHeaders() }, payload: { checker: ACTORS.checker } }),
+    ]);
+    // neither corrupts state (both accepted, or one accepted + one benign conflict)
+    for (const r of [r1, r2]) expect([200, 201, 409]).toContain(r.statusCode);
+    // invariant: exactly one ACTIVE assignment for the case
+    const active = await pool.query(`SELECT count(*)::int n FROM app.verification_assignments WHERE case_id = $1 AND active`, [caseId]);
+    expect(active.rows[0].n).toBe(1);
+  });
 });
 
 describe('seat race through the API (SEC-CONC-001)', () => {

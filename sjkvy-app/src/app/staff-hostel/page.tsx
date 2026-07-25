@@ -7,15 +7,17 @@ import { useMemo, useState } from "react";
 import Shell from "@/components/staff/Shell";
 import { ActionButton, Modal, Table } from "@/components/staff/ui";
 import { Loading, EmptyState, ErrorState, StatusPill } from "@/components/ui/States";
-import { useHostelRequests, useHostelBeds, refresh } from "@/lib/hooks";
+import { useHostelRequests, useHostelBeds, useHostelAllocations, refresh } from "@/lib/hooks";
 import { api, type HostelRequest } from "@/lib/api";
 
 export default function Hostel() {
   const reqs = useHostelRequests();
   const beds = useHostelBeds();
+  const allocs = useHostelAllocations();
   const [allocFor, setAllocFor] = useState<HostelRequest | null>(null);
+  const [reason, setReason] = useState<Record<string, string>>({});
   const available = useMemo(() => (beds.data ?? []).filter((b) => /AVAILABLE/i.test(b.status)), [beds.data]);
-  const refetch = () => { reqs.mutate(); beds.mutate(); refresh.hostelRequests(); refresh.hostelBeds(); };
+  const refetch = () => { reqs.mutate(); beds.mutate(); allocs.mutate(); refresh.hostelRequests(); refresh.hostelBeds(); refresh.hostelAllocations(); };
 
   return (
     <Shell title="Hostel" subtitle="Requests and bed allocation">
@@ -68,6 +70,36 @@ export default function Hostel() {
                   ) : /^MAINTENANCE$/i.test(b.status) ? (
                     <ActionButton variant="ghost" onRun={() => api.setBedStatus(b.id, "AVAILABLE")} onDone={refetch}>Set available</ActionButton>
                   ) : <span className="font-caption text-on-surface-variant">occupied</span>}
+                </td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="mb-3 font-display-md text-title-lg text-primary">Current residents</h2>
+        {allocs.isLoading ? <Loading label="Loading allocations…" /> : allocs.error ? (
+          <ErrorState message="Could not load allocations." onRetry={() => allocs.mutate()} />
+        ) : (allocs.data ?? []).length === 0 ? (
+          <EmptyState icon="hotel" title="No active allocations" hint="No residents are currently allocated a bed." />
+        ) : (
+          <Table head={["Block", "Room", "Bed", "Enrolment", "Since", "Discharge"]}>
+            {(allocs.data ?? []).map((a) => (
+              <tr key={a.id} className="border-b border-outline/10 last:border-0 align-top">
+                <td className="px-4 py-3 font-body-md">{a.block_name ?? "—"}</td>
+                <td className="px-4 py-3 font-body-md">{a.room_no ?? "—"}</td>
+                <td className="px-4 py-3 font-body-md">{a.bed_no ?? "—"}</td>
+                <td className="px-4 py-3 font-body-md text-on-surface-variant">{a.enrolment_id.slice(0, 8)}</td>
+                <td className="px-4 py-3 font-caption text-on-surface-variant">{a.allocated_at ? new Date(a.allocated_at).toLocaleDateString() : "—"}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-end gap-2">
+                    <input value={reason[a.id] ?? ""} onChange={(e) => setReason((r) => ({ ...r, [a.id]: e.target.value }))} placeholder="Reason"
+                      className="w-40 rounded-lg border border-outline/40 bg-surface px-2 py-1 font-caption" />
+                    <ActionButton variant="danger" disabled={(reason[a.id] ?? "").trim().length < 3}
+                      confirm="Discharge this resident and free the bed?"
+                      onRun={() => api.dischargeAllocation(a.id, reason[a.id])} onDone={refetch}>Discharge</ActionButton>
+                  </div>
                 </td>
               </tr>
             ))}

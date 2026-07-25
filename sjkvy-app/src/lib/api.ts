@@ -28,6 +28,10 @@ export interface CertVerifyResult {
 export interface VerificationCase {
   id: string; application_id: string; status: string; assigned_to?: string | null; centre_id?: string; created_at?: string; updated_at?: string;
 }
+export interface HostelAllocation {
+  id: string; bed_id: string; enrolment_id: string; allocated_at?: string | null; bed_no?: string; room_no?: string; block_name?: string;
+}
+export interface ProcessingTime { decided: number; avg_days: number | null; median_days: number | null; max_days: number | null }
 export interface NotificationItem { id: string; template_key?: string; status?: string; created_at?: string; payload?: unknown }
 
 // ----- staff domain types (mirror sjkvy-api read projections) -----
@@ -143,6 +147,9 @@ export const api = {
   // ----- staff: hostel -----
   listHostelRequests: (opts?: RequestOpts) => listOf<HostelRequest>("hostel/requests", opts),
   listHostelBeds: (opts?: RequestOpts) => listOf<HostelBed>("hostel/beds", opts),
+  listHostelAllocations: (opts?: RequestOpts) => listOf<HostelAllocation>("hostel/allocations", opts),
+  dischargeAllocation: (allocationId: string, reason: string, opts?: RequestOpts) =>
+    http.post<{ status: string }>(`hostel/allocations/${allocationId}/discharge`, { reason }, { idempotencyKey: newIdempotencyKey(), ...opts }),
   approveHostelRequest: (requestId: string, opts?: RequestOpts) =>
     http.post<{ status: string }>(`hostel/requests/${requestId}/approve`, undefined, { idempotencyKey: newIdempotencyKey(), ...opts }),
   allocateHostelBed: (requestId: string, bedId: string, opts?: RequestOpts) =>
@@ -162,6 +169,10 @@ export const api = {
   // ----- staff: placement -----
   listOpportunities: (opts?: RequestOpts) => listOf<PlacementOpportunity>("placement/opportunities", opts),
   listReferrals: (opts?: RequestOpts) => listOf<PlacementReferral>("placement/referrals", opts),
+  createEmployer: (body: { name: string; contact?: string; district?: string }, opts?: RequestOpts) =>
+    http.post<{ employer_id: string }>("placement/employers", body, opts),
+  createOpportunity: (body: { employer_id: string; title: string; openings: number; course_id?: string; closes_on?: string }, opts?: RequestOpts) =>
+    http.post<{ opportunity_id: string }>("placement/opportunities", body, opts),
   referStudent: (opportunityId: string, placementProfileId: string, opts?: RequestOpts) =>
     http.post<{ referral_id: string }>(`placement/opportunities/${opportunityId}/referrals`, { placement_profile_id: placementProfileId }, { idempotencyKey: newIdempotencyKey(), ...opts }),
   updateReferral: (referralId: string, status: string, opts?: RequestOpts) =>
@@ -175,6 +186,7 @@ export const api = {
   reportHostelOccupancy: (opts?: RequestOpts) => listOf<StatusCount>("reports/hostel-occupancy", opts),
   reportCertificates: (opts?: RequestOpts) => listOf<StatusCount>("reports/certificates", opts),
   reportPlacement: (opts?: RequestOpts) => listOf<StatusCount>("reports/placement", opts),
+  reportProcessingTime: (opts?: RequestOpts) => http.get<ProcessingTime>("reports/processing-time", opts),
 
   // ----- admin: admission decision (transactional + idempotent) -----
   finalizeAdmission: (

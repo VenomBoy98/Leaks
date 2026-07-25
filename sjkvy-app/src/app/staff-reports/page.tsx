@@ -52,6 +52,22 @@ export default function Reports() {
         <EmptyState icon="insights" title="No report data" />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="rounded-xl border border-outline/15 bg-surface p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">timer</span>
+              <h3 className="font-display-md text-title-lg text-on-surface">Processing time</h3>
+              <span className="ml-auto font-display-md text-headline-md text-primary">{data.processing.decided}</span>
+            </div>
+            <p className="mb-3 font-caption text-on-surface-variant">Applications decided (submit → decision), days</p>
+            <dl className="grid grid-cols-3 gap-2 text-center">
+              {[["Average", data.processing.avg_days], ["Median", data.processing.median_days], ["Max", data.processing.max_days]].map(([label, v]) => (
+                <div key={label as string} className="rounded-lg bg-surface-container-high/50 p-3">
+                  <dd className="font-display-md text-title-lg tabular-nums text-on-surface">{v ?? "—"}</dd>
+                  <dt className="font-caption text-on-surface-variant">{label}</dt>
+                </div>
+              ))}
+            </dl>
+          </div>
           <ReportCard title="Verification volume" icon="fact_check" rows={data.verification} />
           <ReportCard title="Counselling outcomes" icon="forum" rows={data.counselling} />
           <ReportCard title="Hostel occupancy" icon="night_shelter" rows={data.hostel} />

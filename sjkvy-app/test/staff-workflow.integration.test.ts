@@ -68,6 +68,55 @@ describe("staff reads are centre-scoped through the BFF proxy", () => {
   });
 });
 
+describe("0011: document version_id exposure is authorized and leak-free", () => {
+  it("authorized staff see version_id but never storage_path", async () => {
+    if (guard()) return expect(true).toBe(true);
+    const cases = await items(await get("verification/cases", await cookie(CAD1)));
+    // find a case whose application has at least one document visible to the centre admin
+    let docs: Array<Record<string, unknown>> = [];
+    for (const c of cases) {
+      const d = await items(await get(`applications/${c.application_id}/documents`, await cookie(CAD1)));
+      if (d.length) { docs = d; break; }
+    }
+    if (docs.length === 0) return expect(true).toBe(true); // no seeded docs to assert on
+    for (const d of docs) {
+      expect(d).toHaveProperty("version_id");
+      expect(d).not.toHaveProperty("storage_path"); // 0011 must not leak the object location
+    }
+  });
+
+  it("a centre-2 admin cannot read a centre-1 application's documents (cross-centre denial)", async () => {
+    if (guard()) return expect(true).toBe(true);
+    const cases = await items(await get("verification/cases", await cookie(CAD1)));
+    const withDocs: string[] = [];
+    for (const c of cases) {
+      const d = await items(await get(`applications/${c.application_id}/documents`, await cookie(CAD1)));
+      if (d.length) { withDocs.push(String(c.application_id)); break; }
+    }
+    if (withDocs.length === 0) return expect(true).toBe(true);
+    const r = await get(`applications/${withDocs[0]}/documents`, await cookie(CAD2));
+    // RLS view returns no rows for a non-scoped admin (never someone else's rows)
+    const d2 = r.status === 200 ? await items(r) : [];
+    expect(d2.length).toBe(0);
+  });
+
+  it("an unrelated applicant cannot read another applicant's documents", async () => {
+    if (guard()) return expect(true).toBe(true);
+    const cases = await items(await get("verification/cases", await cookie(CAD1)));
+    let target = "";
+    for (const c of cases) {
+      const d = await items(await get(`applications/${c.application_id}/documents`, await cookie(CAD1)));
+      if (d.length) { target = String(c.application_id); break; }
+    }
+    if (!target) return expect(true).toBe(true);
+    // a throwaway applicant sub with no relationship to the application
+    const stranger = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const r = await get(`applications/${target}/documents`, await cookie(stranger, "applicant"));
+    const d = r.status === 200 ? await items(r) : [];
+    expect(d.length).toBe(0);
+  });
+});
+
 describe("staff reports are real scoped aggregates", () => {
   it("centre-1 admin gets non-empty verification aggregate; centre-2 admin's is disjoint", async () => {
     if (guard()) return expect(true).toBe(true);

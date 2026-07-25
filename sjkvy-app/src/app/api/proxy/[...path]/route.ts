@@ -62,9 +62,11 @@ const ALLOW: Array<[string, RegExp]> = [
   // ----- staff: hostel -----
   ["GET", /^hostel\/requests$/],
   ["GET", /^hostel\/beds$/],
+  ["GET", /^hostel\/allocations$/],
   ["POST", new RegExp(`^hostel\\/requests\\/${U}\\/approve$`)],
   ["POST", new RegExp(`^hostel\\/requests\\/${U}\\/allocate$`)],
   ["POST", new RegExp(`^hostel\\/beds\\/${U}\\/status$`)],
+  ["POST", new RegExp(`^hostel\\/allocations\\/${U}\\/discharge$`)],
   // ----- staff: certificates -----
   ["GET", /^certificates$/],
   ["POST", new RegExp(`^enrolments\\/${U}\\/certificate$`)],
@@ -82,6 +84,10 @@ const ALLOW: Array<[string, RegExp]> = [
   ["GET", /^reports\/hostel-occupancy$/],
   ["GET", /^reports\/certificates$/],
   ["GET", /^reports\/placement$/],
+  ["GET", /^reports\/processing-time$/],
+  // ----- staff: placement create (employer / opportunity) -----
+  ["POST", /^placement\/employers$/],
+  ["POST", /^placement\/opportunities$/],
 ];
 
 function isAllowed(method: string, path: string): boolean {

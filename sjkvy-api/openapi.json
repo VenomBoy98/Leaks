@@ -6929,6 +6929,73 @@
         }
       }
     },
+    "/hostel/allocations": {
+      "get": {
+        "operationId": "hostel_allocations_list",
+        "summary": "Active bed allocations with block/room/bed labels (hostel manager / centre admin).",
+        "tags": [
+          "hostel"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hostel/beds": {
       "get": {
         "operationId": "hostel_beds_list",
@@ -11973,6 +12040,73 @@
       "get": {
         "operationId": "reports_placement",
         "summary": "Placement referral outcomes by status (centre-scoped aggregate).",
+        "tags": [
+          "reports"
+        ],
+        "responses": {
+          "4XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "5XX": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "example": "E.STATE.INVALID_TRANSITION"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detail": {},
+                    "requestId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/processing-time": {
+      "get": {
+        "operationId": "reports_processing_time",
+        "summary": "Application processing time (submit → decision) computed in the DB, centre-scoped.",
         "tags": [
           "reports"
         ],

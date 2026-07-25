@@ -5,7 +5,7 @@ import useSWR, { mutate as globalMutate } from "swr";
 import {
   api, type Application, type PublicCentre, type ApplicantDocument, type NotificationItem, type Profile, type PublicCourse,
   type VerificationCase, type Batch, type ClassSession, type AttendanceRow, type Enrolment,
-  type CounsellingAppointment, type HostelRequest, type HostelBed, type Certificate,
+  type CounsellingAppointment, type HostelRequest, type HostelBed, type HostelAllocation, type Certificate,
   type PlacementOpportunity, type PlacementReferral, type StaffMember,
 } from "@/lib/api";
 
@@ -64,6 +64,9 @@ export function useHostelRequests() {
 export function useHostelBeds() {
   return useSWR<HostelBed[]>("hostel/beds", () => api.listHostelBeds());
 }
+export function useHostelAllocations() {
+  return useSWR<HostelAllocation[]>("hostel/allocations", () => api.listHostelAllocations());
+}
 export function useCertificates() {
   return useSWR<Certificate[]>("certificates", () => api.listCertificates());
 }
@@ -84,10 +87,10 @@ export function useWaitlist(batchId: string | undefined) {
 }
 export function useReports() {
   return useSWR("reports/all", async () => {
-    const [verification, counselling, hostel, certificates, placement] = await Promise.all([
-      api.reportVerification(), api.reportCounselling(), api.reportHostelOccupancy(), api.reportCertificates(), api.reportPlacement(),
+    const [verification, counselling, hostel, certificates, placement, processing] = await Promise.all([
+      api.reportVerification(), api.reportCounselling(), api.reportHostelOccupancy(), api.reportCertificates(), api.reportPlacement(), api.reportProcessingTime(),
     ]);
-    return { verification, counselling, hostel, certificates, placement };
+    return { verification, counselling, hostel, certificates, placement, processing };
   });
 }
 
@@ -106,6 +109,7 @@ export const refresh = {
   waitlist: (batchId: string) => globalMutate(["waitlist", batchId]),
   hostelRequests: () => globalMutate("hostel/requests"),
   hostelBeds: () => globalMutate("hostel/beds"),
+  hostelAllocations: () => globalMutate("hostel/allocations"),
   certificates: () => globalMutate("certificates"),
   referrals: () => globalMutate("placement/referrals"),
 };
